@@ -1,0 +1,39 @@
+# Seed por API (opcional) - fiscal-service
+# Base URL ejemplo: http://localhost:8087
+
+### Crear serie BOLETA TEST
+POST http://localhost:8087/fiscal/series
+Content-Type: application/json
+
+{
+  "companyId": "11111111-1111-1111-1111-111111111111",
+  "countryCode": "PE",
+  "taxAuthorityCode": "SUNAT",
+  "documentTypeCode": "03",
+  "series": "B001",
+  "environment": "TEST",
+  "nextNumber": 1,
+  "active": true,
+  "validFrom": null,
+  "validTo": null
+}
+
+### Crear serie FACTURA TEST
+POST http://localhost:8087/fiscal/series
+Content-Type: application/json
+
+{
+  "companyId": "11111111-1111-1111-1111-111111111111",
+  "countryCode": "PE",
+  "taxAuthorityCode": "SUNAT",
+  "documentTypeCode": "01",
+  "series": "F001",
+  "environment": "TEST",
+  "nextNumber": 1,
+  "active": true,
+  "validFrom": null,
+  "validTo": null
+}
+
+### Listar series por company
+GET http://localhost:8087/fiscal/series?companyId=11111111-1111-1111-1111-111111111111
