@@ -8,5 +8,11 @@ import java.util.UUID;
 
 public interface FiscalProviderConfigJpaRepository extends JpaRepository<FiscalProviderConfigEntity, UUID> {
     List<FiscalProviderConfigEntity> findByCompanyId(UUID companyId);
-}
 
+    List<FiscalProviderConfigEntity> findByCompanyIdAndCountryCodeAndTaxAuthorityCodeAndEnvironmentAndActiveTrue(
+            UUID companyId,
+            String countryCode,
+            String taxAuthorityCode,
+            String environment
+    );
+}

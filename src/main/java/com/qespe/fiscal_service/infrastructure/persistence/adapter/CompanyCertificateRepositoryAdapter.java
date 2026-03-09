@@ -1,8 +1,8 @@
 package com.qespe.fiscal_service.infrastructure.persistence.adapter;
 
+import com.qespe.fiscal_service.core.port.out.CompanyCertificateRepositoryPort;
 import com.qespe.fiscal_service.infrastructure.persistence.entity.CompanyCertificateEntity;
 import com.qespe.fiscal_service.infrastructure.persistence.repository.CompanyCertificateJpaRepository;
-import com.qespe.fiscal_service.core.port.out.CompanyCertificateRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -30,5 +30,9 @@ public class CompanyCertificateRepositoryAdapter implements CompanyCertificateRe
     public List<CompanyCertificateEntity> findByCompanyId(UUID companyId) {
         return repository.findByCompanyId(companyId);
     }
-}
 
+    @Override
+    public List<CompanyCertificateEntity> findActiveByCompany(UUID companyId) {
+        return repository.findByCompanyIdAndStatus(companyId, "ACTIVE");
+    }
+}

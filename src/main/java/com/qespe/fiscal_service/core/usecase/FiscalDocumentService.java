@@ -8,6 +8,7 @@ import com.qespe.fiscal_service.core.dto.document.FiscalDocumentReserveRequest;
 import com.qespe.fiscal_service.core.dto.document.FiscalDocumentReserveResponse;
 import com.qespe.fiscal_service.core.dto.document.FiscalDocumentResponse;
 import com.qespe.fiscal_service.core.dto.event.FiscalEventResponse;
+import com.qespe.fiscal_service.core.domain.event.FiscalDocumentReservedEvent;
 import com.qespe.fiscal_service.infrastructure.mapper.FiscalDocumentMapper;
 import com.qespe.fiscal_service.infrastructure.mapper.FiscalEventMapper;
 import com.qespe.fiscal_service.infrastructure.persistence.entity.FiscalDocumentEntity;
@@ -26,6 +27,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +49,7 @@ public class FiscalDocumentService implements FiscalDocumentUseCase {
     private final FiscalEventRepositoryPort eventRepository;
     private final FiscalDocumentMapper documentMapper;
     private final FiscalEventMapper eventMapper;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -83,6 +86,7 @@ public class FiscalDocumentService implements FiscalDocumentUseCase {
         try {
             FiscalDocumentEntity saved = documentRepository.save(document);
             createReservedEvent(saved);
+            eventPublisher.publishEvent(new FiscalDocumentReservedEvent(saved.getId()));
             return documentMapper.toReserveResponse(saved);
         } catch (DataIntegrityViolationException ex) {
             return documentRepository.findByIdempotency(request.companyId(), request.sourceService(), request.idempotencyKey())

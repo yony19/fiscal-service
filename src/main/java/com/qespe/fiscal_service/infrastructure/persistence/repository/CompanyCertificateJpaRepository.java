@@ -8,5 +8,5 @@ import java.util.UUID;
 
 public interface CompanyCertificateJpaRepository extends JpaRepository<CompanyCertificateEntity, UUID> {
     List<CompanyCertificateEntity> findByCompanyId(UUID companyId);
+    List<CompanyCertificateEntity> findByCompanyIdAndStatus(UUID companyId, String status);
 }
-

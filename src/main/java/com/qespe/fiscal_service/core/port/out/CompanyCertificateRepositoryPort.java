@@ -10,5 +10,5 @@ public interface CompanyCertificateRepositoryPort {
     CompanyCertificateEntity save(CompanyCertificateEntity entity);
     Optional<CompanyCertificateEntity> findById(UUID id);
     List<CompanyCertificateEntity> findByCompanyId(UUID companyId);
+    List<CompanyCertificateEntity> findActiveByCompany(UUID companyId);
 }
-

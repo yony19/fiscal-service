@@ -4,7 +4,9 @@ import com.qespe.fiscal_service.core.dto.common.PageResponse;
 import com.qespe.fiscal_service.core.dto.document.FiscalDocumentReserveRequest;
 import com.qespe.fiscal_service.core.dto.document.FiscalDocumentReserveResponse;
 import com.qespe.fiscal_service.core.dto.document.FiscalDocumentResponse;
+import com.qespe.fiscal_service.core.dto.engine.FiscalDocumentProcessResponse;
 import com.qespe.fiscal_service.core.dto.event.FiscalEventResponse;
+import com.qespe.fiscal_service.core.port.in.FiscalDocumentProcessingUseCase;
 import com.qespe.fiscal_service.core.port.in.FiscalDocumentUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -20,10 +22,16 @@ import java.util.UUID;
 public class FiscalDocumentController {
 
     private final FiscalDocumentUseCase useCase;
+    private final FiscalDocumentProcessingUseCase processingUseCase;
 
     @PostMapping("/reserve")
     public FiscalDocumentReserveResponse reserve(@Valid @RequestBody FiscalDocumentReserveRequest request) {
         return useCase.reserve(request);
+    }
+
+    @PostMapping("/{id}/process")
+    public FiscalDocumentProcessResponse process(@PathVariable UUID id) {
+        return processingUseCase.process(id);
     }
 
     @GetMapping("/{id}")
@@ -65,4 +73,3 @@ public class FiscalDocumentController {
         return useCase.listEvents(id);
     }
 }
-

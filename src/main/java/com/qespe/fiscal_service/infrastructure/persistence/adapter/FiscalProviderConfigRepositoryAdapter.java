@@ -1,8 +1,8 @@
 package com.qespe.fiscal_service.infrastructure.persistence.adapter;
 
+import com.qespe.fiscal_service.core.port.out.FiscalProviderConfigRepositoryPort;
 import com.qespe.fiscal_service.infrastructure.persistence.entity.FiscalProviderConfigEntity;
 import com.qespe.fiscal_service.infrastructure.persistence.repository.FiscalProviderConfigJpaRepository;
-import com.qespe.fiscal_service.core.port.out.FiscalProviderConfigRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -30,5 +30,14 @@ public class FiscalProviderConfigRepositoryAdapter implements FiscalProviderConf
     public List<FiscalProviderConfigEntity> findByCompanyId(UUID companyId) {
         return repository.findByCompanyId(companyId);
     }
-}
 
+    @Override
+    public List<FiscalProviderConfigEntity> findActiveByScope(UUID companyId, String countryCode, String taxAuthorityCode, String environment) {
+        return repository.findByCompanyIdAndCountryCodeAndTaxAuthorityCodeAndEnvironmentAndActiveTrue(
+                companyId,
+                countryCode,
+                taxAuthorityCode,
+                environment
+        );
+    }
+}

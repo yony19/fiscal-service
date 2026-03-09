@@ -10,5 +10,5 @@ public interface FiscalProviderConfigRepositoryPort {
     FiscalProviderConfigEntity save(FiscalProviderConfigEntity entity);
     Optional<FiscalProviderConfigEntity> findById(UUID id);
     List<FiscalProviderConfigEntity> findByCompanyId(UUID companyId);
+    List<FiscalProviderConfigEntity> findActiveByScope(UUID companyId, String countryCode, String taxAuthorityCode, String environment);
 }
-
