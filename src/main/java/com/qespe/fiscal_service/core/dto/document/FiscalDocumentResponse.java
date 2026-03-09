@@ -1,0 +1,65 @@
+package com.qespe.fiscal_service.core.dto.document;
+
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.UUID;
+
+public record FiscalDocumentResponse(
+        UUID id,
+        UUID companyId,
+        String countryCode,
+        String taxAuthorityCode,
+        String environment,
+        String sourceService,
+        String sourceId,
+        String sourceCode,
+        String sourceEventType,
+        String sourceEventId,
+        String idempotencyKey,
+        String documentType,
+        String documentTypeCode,
+        LocalDate issueDate,
+        LocalTime issueTime,
+        String series,
+        Long number,
+        String fullNumber,
+        String currencyCode,
+        BigDecimal exchangeRate,
+        String emitterDocumentType,
+        String emitterDocumentNumber,
+        String emitterLegalName,
+        String emitterTradeName,
+        String emitterAddress,
+        UUID customerId,
+        String customerDocumentType,
+        String customerDocumentNumber,
+        String customerName,
+        String customerAddress,
+        String customerEmail,
+        BigDecimal taxableAmount,
+        BigDecimal exemptAmount,
+        BigDecimal unaffectedAmount,
+        BigDecimal freeAmount,
+        BigDecimal discountTotal,
+        BigDecimal chargeTotal,
+        BigDecimal taxAmount,
+        BigDecimal igvAmount,
+        BigDecimal iscAmount,
+        BigDecimal otherTaxAmount,
+        BigDecimal totalAmount,
+        String status,
+        String providerCode,
+        Integer sendAttemptCount,
+        String errorCode,
+        String errorMessage,
+        Instant createdAt,
+        Instant sentAt,
+        Instant acceptedAt,
+        Instant rejectedAt,
+        List<FiscalDocumentLineResponse> lines
+) {
+}
+
