@@ -37,3 +37,8 @@ logging:
 
 auth-service:
   base-url: http://localhost:8081
+
+fiscal:
+  artifacts:
+    storage-mode: FILE_SYSTEM
+    base-path: C:/Users/User/Documents/proyecto personal/pointofsale/resources/fiscal

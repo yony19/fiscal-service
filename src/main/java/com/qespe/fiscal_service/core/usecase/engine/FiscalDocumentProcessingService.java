@@ -73,7 +73,13 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
             document.setXmlPath(xmlResult.xmlPath());
             document.setXmlHash(xmlResult.xmlHash());
             document.setQrData(xmlResult.qrData());
-            transition(document, FiscalDocumentStatus.XML_GENERATED, "XML artifact generated", "XML_GENERATED", Map.of("xmlPath", xmlResult.xmlPath()));
+            transition(
+                    document,
+                    FiscalDocumentStatus.XML_GENERATED,
+                    "XML artifact generated",
+                    "XML_GENERATED",
+                    Map.of("xmlPath", xmlResult.xmlPath(), "xmlHash", xmlResult.xmlHash())
+            );
 
             SignedArtifactResult signed = signer.sign(document, xmlResult, certificateContext);
             transition(document, FiscalDocumentStatus.SIGNED, "XML artifact signed", "XML_SIGNED", Map.of(
