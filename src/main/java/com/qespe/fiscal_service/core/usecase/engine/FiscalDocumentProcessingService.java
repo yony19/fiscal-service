@@ -9,9 +9,11 @@ import com.qespe.fiscal_service.core.port.out.FiscalEventRepositoryPort;
 import com.qespe.fiscal_service.core.port.out.FiscalSenderPort;
 import com.qespe.fiscal_service.core.port.out.FiscalSignerPort;
 import com.qespe.fiscal_service.core.port.out.FiscalXmlBuilderPort;
+import com.qespe.fiscal_service.core.validation.FiscalDocumentConsistencyValidator;
 import com.qespe.fiscal_service.infrastructure.persistence.entity.FiscalDocumentEntity;
 import com.qespe.fiscal_service.infrastructure.persistence.entity.FiscalEventEntity;
 import com.qespe.fiscal_service.shared.exception.BusinessException;
+import com.qespe.fiscal_service.shared.exception.FiscalValidationException;
 import com.qespe.fiscal_service.shared.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -30,6 +32,7 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
     private final EmitterResolutionService emitterResolver;
     private final ProviderResolutionService providerResolver;
     private final CertificateResolutionService certificateResolver;
+    private final FiscalDocumentConsistencyValidator consistencyValidator;
     private final FiscalXmlBuilderPort xmlBuilder;
     private final FiscalSignerPort signer;
     private final FiscalSenderPort sender;
@@ -53,6 +56,7 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
         appendEvent(document, "PROCESSING_STARTED", "Fiscal engine processing started", Map.of());
 
         try {
+            consistencyValidator.validateForProcessing(document);
             transition(document, FiscalDocumentStatus.PENDING_XML, "Moved to PENDING_XML", "STATUS_CHANGED", Map.of("to", "PENDING_XML"));
 
             EmitterContext emitterContext = emitterResolver.resolve(document);
@@ -125,6 +129,10 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
             documentRepository.save(document);
             return toResponse(document);
 
+        } catch (FiscalValidationException ex) {
+            appendEvent(document, "XML_VALIDATION_FAILED", "Fiscal payload validation failed", Map.of("errorCode", "FISCAL_VALIDATION_ERROR"));
+            markError(document, "PROCESSING_ERROR", ex.getMessage(), "FISCAL_VALIDATION_ERROR");
+            return toResponse(document);
         } catch (BusinessException ex) {
             markError(document, "PROCESSING_ERROR", ex.getMessage(), "BUSINESS_ERROR");
             return toResponse(document);

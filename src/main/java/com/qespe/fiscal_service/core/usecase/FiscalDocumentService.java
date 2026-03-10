@@ -20,6 +20,7 @@ import com.qespe.fiscal_service.core.port.in.FiscalDocumentUseCase;
 import com.qespe.fiscal_service.core.port.out.FiscalDocumentRepositoryPort;
 import com.qespe.fiscal_service.core.port.out.FiscalEventRepositoryPort;
 import com.qespe.fiscal_service.core.port.out.FiscalSeriesRepositoryPort;
+import com.qespe.fiscal_service.core.validation.FiscalDocumentConsistencyValidator;
 import com.qespe.fiscal_service.shared.exception.BusinessException;
 import com.qespe.fiscal_service.shared.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -50,11 +51,13 @@ public class FiscalDocumentService implements FiscalDocumentUseCase {
     private final FiscalDocumentMapper documentMapper;
     private final FiscalEventMapper eventMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final FiscalDocumentConsistencyValidator consistencyValidator;
 
     @Override
     @Transactional
     public FiscalDocumentReserveResponse reserve(FiscalDocumentReserveRequest request) {
         validateRequest(request);
+        consistencyValidator.validateForReservation(request);
 
         var existing = documentRepository.findByIdempotency(request.companyId(), request.sourceService(), request.idempotencyKey());
         if (existing.isPresent()) {
