@@ -15,6 +15,8 @@ public class MockFiscalSigner implements FiscalSignerPort {
         String signedXml = xmlBuildResult.xmlContent() + "\n<!-- MOCK_SIGNED certId=" + certificateContext.certificateId() + " -->";
         return new SignedArtifactResult(
                 signedXml,
+                "mock://artifacts/signed/" + document.getId() + ".xml",
+                "MOCK_SIGNED_HASH_" + document.getId(),
                 "MOCK-SIGNATURE-" + document.getId(),
                 "MOCK_RSA_SHA256"
         );

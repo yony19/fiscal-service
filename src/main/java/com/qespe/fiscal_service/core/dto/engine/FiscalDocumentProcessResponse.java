@@ -9,6 +9,7 @@ public record FiscalDocumentProcessResponse(
         String authorityStatusCode,
         String authorityStatusMessage,
         String xmlPath,
+        String signedXmlPath,
         String cdrPath,
         Integer sendAttemptCount,
         Instant processedAt

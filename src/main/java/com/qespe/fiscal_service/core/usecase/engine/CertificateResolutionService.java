@@ -46,6 +46,8 @@ public class CertificateResolutionService {
                 selected.getProviderCode(),
                 selected.getAlias(),
                 selected.getStorageMode(),
+                selected.getCertificatePath(),
+                selected.getPrivateKeyPath(),
                 selected.getSecretRef(),
                 selected.getPasswordSecretRef(),
                 selected.getValidFrom(),

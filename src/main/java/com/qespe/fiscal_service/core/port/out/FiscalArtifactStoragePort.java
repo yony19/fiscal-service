@@ -5,4 +5,5 @@ import com.qespe.fiscal_service.infrastructure.persistence.entity.FiscalDocument
 
 public interface FiscalArtifactStoragePort {
     StoredArtifactResult storeXml(FiscalDocumentEntity document, String xmlContent);
+    StoredArtifactResult storeSignedXml(FiscalDocumentEntity document, String signedXmlContent);
 }

@@ -8,6 +8,8 @@ public record CertificateContext(
         String providerCode,
         String alias,
         String storageMode,
+        String certificatePath,
+        String privateKeyPath,
         String secretRef,
         String passwordSecretRef,
         Instant validFrom,

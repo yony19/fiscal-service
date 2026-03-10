@@ -36,20 +36,28 @@ public class FileSystemFiscalArtifactStorage implements FiscalArtifactStoragePor
 
     @Override
     public StoredArtifactResult storeXml(FiscalDocumentEntity document, String xmlContent) {
+        return store(document, xmlContent, xmlPath, sanitizeFilename(document.getFullNumber()) + ".xml");
+    }
+
+    @Override
+    public StoredArtifactResult storeSignedXml(FiscalDocumentEntity document, String signedXmlContent) {
+        return store(document, signedXmlContent, signedPath, sanitizeFilename(document.getFullNumber()) + "-signed.xml");
+    }
+
+    private StoredArtifactResult store(FiscalDocumentEntity document, String content, Path rootDir, String filename) {
         if (!"FILE_SYSTEM".equalsIgnoreCase(properties.getStorageMode())) {
             throw new BusinessException("Unsupported fiscal artifacts storage mode: " + properties.getStorageMode());
         }
 
-        String safeFile = sanitizeFilename(document.getFullNumber()) + ".xml";
-        Path file = xmlPath.resolve(safeFile).normalize();
+        Path file = rootDir.resolve(filename).normalize();
 
-        if (!file.startsWith(xmlPath)) {
+        if (!file.startsWith(rootDir)) {
             throw new BusinessException("Invalid artifact path generated");
         }
 
         try {
-            byte[] bytes = xmlContent.getBytes(StandardCharsets.UTF_8);
-            Files.writeString(file, xmlContent, StandardCharsets.UTF_8);
+            byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
+            Files.writeString(file, content, StandardCharsets.UTF_8);
             return new StoredArtifactResult(file.toString(), sha256(bytes), bytes.length);
         } catch (IOException ex) {
             throw new BusinessException("Unable to store fiscal XML artifact");

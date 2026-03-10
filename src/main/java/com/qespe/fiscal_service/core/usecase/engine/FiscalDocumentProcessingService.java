@@ -81,10 +81,20 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
                     Map.of("xmlPath", xmlResult.xmlPath(), "xmlHash", xmlResult.xmlHash())
             );
 
-            SignedArtifactResult signed = signer.sign(document, xmlResult, certificateContext);
+            SignedArtifactResult signed;
+            try {
+                signed = signer.sign(document, xmlResult, certificateContext);
+            } catch (BusinessException ex) {
+                appendEvent(document, "SIGNING_FAILED", "XML signing failed", Map.of("errorCode", "SIGNING_ERROR"));
+                throw ex;
+            }
+            document.setSignedXmlPath(signed.signedXmlPath());
+            document.setSignedXmlHash(signed.signedXmlHash());
             transition(document, FiscalDocumentStatus.SIGNED, "XML artifact signed", "XML_SIGNED", Map.of(
                     "signatureAlgorithm", signed.signatureAlgorithm(),
-                    "signatureReference", signed.signatureReference()
+                    "signatureReference", signed.signatureReference(),
+                    "signedXmlPath", signed.signedXmlPath(),
+                    "signedXmlHash", signed.signedXmlHash()
             ));
 
             transition(document, FiscalDocumentStatus.QUEUED_FOR_SEND, "Document queued for send", "STATUS_CHANGED", Map.of("to", "QUEUED_FOR_SEND"));
@@ -168,6 +178,7 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
                 document.getAuthorityStatusCode(),
                 document.getAuthorityStatusMessage(),
                 document.getXmlPath(),
+                document.getSignedXmlPath(),
                 document.getCdrPath(),
                 document.getSendAttemptCount(),
                 Instant.now()
