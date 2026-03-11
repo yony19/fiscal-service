@@ -13,6 +13,7 @@ import com.qespe.fiscal_service.core.validation.FiscalDocumentConsistencyValidat
 import com.qespe.fiscal_service.infrastructure.persistence.entity.FiscalDocumentEntity;
 import com.qespe.fiscal_service.infrastructure.persistence.entity.FiscalEventEntity;
 import com.qespe.fiscal_service.shared.exception.BusinessException;
+import com.qespe.fiscal_service.shared.exception.EmitterValidationException;
 import com.qespe.fiscal_service.shared.exception.FiscalValidationException;
 import com.qespe.fiscal_service.shared.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -132,6 +133,10 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
         } catch (FiscalValidationException ex) {
             appendEvent(document, "XML_VALIDATION_FAILED", "Fiscal payload validation failed", Map.of("errorCode", "FISCAL_VALIDATION_ERROR"));
             markError(document, "PROCESSING_ERROR", ex.getMessage(), "FISCAL_VALIDATION_ERROR");
+            return toResponse(document);
+        } catch (EmitterValidationException ex) {
+            appendEvent(document, "EMITTER_VALIDATION_FAILED", "Emitter validation failed", Map.of("errorCode", "EMITTER_VALIDATION_ERROR"));
+            markError(document, "PROCESSING_ERROR", ex.getMessage(), "EMITTER_VALIDATION_ERROR");
             return toResponse(document);
         } catch (BusinessException ex) {
             markError(document, "PROCESSING_ERROR", ex.getMessage(), "BUSINESS_ERROR");

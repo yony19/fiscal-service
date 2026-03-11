@@ -31,11 +31,11 @@ public record FiscalDocumentReserveRequest(
         @NotBlank String currencyCode,
         @DecimalMin(value = "0.0", inclusive = false) BigDecimal exchangeRate,
 
-        @NotBlank String emitterDocumentType,
-        @NotBlank String emitterDocumentNumber,
-        @NotBlank String emitterLegalName,
+        String emitterDocumentType,
+        String emitterDocumentNumber,
+        String emitterLegalName,
         String emitterTradeName,
-        @NotBlank String emitterAddress,
+        String emitterAddress,
 
         UUID customerId,
         String customerDocumentType,

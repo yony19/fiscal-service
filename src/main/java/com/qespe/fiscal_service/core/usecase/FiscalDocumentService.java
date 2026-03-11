@@ -3,6 +3,7 @@ package com.qespe.fiscal_service.core.usecase;
 import com.qespe.fiscal_service.core.domain.enums.FiscalDocumentStatus;
 import com.qespe.fiscal_service.core.domain.enums.FiscalDocumentType;
 import com.qespe.fiscal_service.core.domain.enums.FiscalEnvironment;
+import com.qespe.fiscal_service.core.domain.engine.EmitterContext;
 import com.qespe.fiscal_service.core.dto.common.PageResponse;
 import com.qespe.fiscal_service.core.dto.document.FiscalDocumentReserveRequest;
 import com.qespe.fiscal_service.core.dto.document.FiscalDocumentReserveResponse;
@@ -52,6 +53,7 @@ public class FiscalDocumentService implements FiscalDocumentUseCase {
     private final FiscalEventMapper eventMapper;
     private final ApplicationEventPublisher eventPublisher;
     private final FiscalDocumentConsistencyValidator consistencyValidator;
+    private final com.qespe.fiscal_service.core.usecase.engine.EmitterResolutionService emitterResolutionService;
 
     @Override
     @Transactional
@@ -85,7 +87,13 @@ public class FiscalDocumentService implements FiscalDocumentUseCase {
         series.setNextNumber(reservedNumber + 1);
         seriesRepository.save(series);
 
-        FiscalDocumentEntity document = buildDocument(request, environment, series, reservedNumber);
+        EmitterContext emitterContext = emitterResolutionService.resolve(
+                request.companyId(),
+                environment.name(),
+                request.countryCode(),
+                request.taxAuthorityCode()
+        );
+        FiscalDocumentEntity document = buildDocument(request, environment, series, reservedNumber, emitterContext);
         try {
             FiscalDocumentEntity saved = documentRepository.save(document);
             createReservedEvent(saved);
@@ -154,7 +162,8 @@ public class FiscalDocumentService implements FiscalDocumentUseCase {
             FiscalDocumentReserveRequest request,
             FiscalEnvironment environment,
             FiscalSeriesEntity series,
-            long reservedNumber
+            long reservedNumber,
+            EmitterContext emitterContext
     ) {
         FiscalDocumentEntity doc = new FiscalDocumentEntity();
         doc.setCompanyId(request.companyId());
@@ -178,11 +187,11 @@ public class FiscalDocumentService implements FiscalDocumentUseCase {
         doc.setCurrencyCode(request.currencyCode());
         doc.setExchangeRate(request.exchangeRate());
 
-        doc.setEmitterDocumentType(request.emitterDocumentType());
-        doc.setEmitterDocumentNumber(request.emitterDocumentNumber());
-        doc.setEmitterLegalName(request.emitterLegalName());
-        doc.setEmitterTradeName(request.emitterTradeName());
-        doc.setEmitterAddress(request.emitterAddress());
+        doc.setEmitterDocumentType(emitterContext.documentType());
+        doc.setEmitterDocumentNumber(emitterContext.documentNumber());
+        doc.setEmitterLegalName(emitterContext.legalName());
+        doc.setEmitterTradeName(emitterContext.tradeName());
+        doc.setEmitterAddress(emitterContext.fiscalAddress());
 
         doc.setCustomerId(request.customerId());
         doc.setCustomerDocumentType(request.customerDocumentType());
