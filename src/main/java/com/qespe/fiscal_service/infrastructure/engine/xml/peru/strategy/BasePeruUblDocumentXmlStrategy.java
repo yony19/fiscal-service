@@ -5,6 +5,7 @@ import com.qespe.fiscal_service.infrastructure.engine.xml.peru.util.PeruUblNames
 import com.qespe.fiscal_service.infrastructure.engine.xml.peru.util.XmlDomUtils;
 import com.qespe.fiscal_service.infrastructure.persistence.entity.FiscalDocumentEntity;
 import com.qespe.fiscal_service.infrastructure.persistence.entity.FiscalDocumentLineEntity;
+import com.qespe.fiscal_service.shared.util.FiscalTaxRateUtils;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
@@ -133,7 +134,7 @@ public abstract class BasePeruUblDocumentXmlStrategy implements PeruUblDocumentX
         Element cat = XmlDomUtils.append(doc, sub, PeruUblNamespaces.CAC, "cac:TaxCategory", null);
         BigDecimal igvRate = resolveLineIgvRate(line);
         if (igvRate != null) {
-            XmlDomUtils.append(doc, cat, PeruUblNamespaces.CBC, "cbc:Percent", igvRate.stripTrailingZeros().toPlainString());
+            XmlDomUtils.append(doc, cat, PeruUblNamespaces.CBC, "cbc:Percent", FiscalTaxRateUtils.toPercent(igvRate).toPlainString());
         }
         if (line.getTaxAffectationCode() != null && !line.getTaxAffectationCode().isBlank()) {
             XmlDomUtils.append(doc, cat, PeruUblNamespaces.CBC, "cbc:TaxExemptionReasonCode", line.getTaxAffectationCode());
@@ -177,10 +178,10 @@ public abstract class BasePeruUblDocumentXmlStrategy implements PeruUblDocumentX
 
     protected BigDecimal resolveLineIgvRate(FiscalDocumentLineEntity line) {
         if (line.getIgvRate() != null) {
-            return line.getIgvRate();
+            return FiscalTaxRateUtils.normalizeRatio(line.getIgvRate());
         }
         if (isTaxableAffectation(line.getTaxAffectationCode())) {
-            return new BigDecimal("18");
+            return FiscalTaxRateUtils.DEFAULT_IGV_RATE_RATIO;
         }
         return null;
     }

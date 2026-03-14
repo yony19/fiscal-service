@@ -3,6 +3,7 @@ package com.qespe.fiscal_service.core.validation;
 import com.qespe.fiscal_service.core.dto.document.FiscalDocumentReserveRequest;
 import com.qespe.fiscal_service.infrastructure.persistence.entity.FiscalDocumentEntity;
 import com.qespe.fiscal_service.infrastructure.persistence.entity.FiscalDocumentLineEntity;
+import com.qespe.fiscal_service.shared.util.FiscalTaxRateUtils;
 import com.qespe.fiscal_service.shared.exception.FiscalValidationException;
 import org.springframework.stereotype.Component;
 
@@ -14,7 +15,6 @@ import java.util.List;
 public class FiscalDocumentConsistencyValidator {
 
     private static final BigDecimal TOLERANCE = new BigDecimal("0.01");
-    private static final BigDecimal DEFAULT_IGV_RATE = new BigDecimal("18");
 
     public void validateForReservation(FiscalDocumentReserveRequest request) {
         BigDecimal lineTotalSum = request.lines().stream()
@@ -100,10 +100,10 @@ public class FiscalDocumentConsistencyValidator {
             return;
         }
 
-        BigDecimal effectiveRate = igvRate != null ? igvRate : DEFAULT_IGV_RATE;
+        BigDecimal effectiveRate = FiscalTaxRateUtils.resolveIgvRatio(igvRate);
         BigDecimal expectedTax = taxableBaseAmount
                 .multiply(effectiveRate)
-                .divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+                .setScale(2, RoundingMode.HALF_UP);
 
         BigDecimal diff = expectedTax.subtract(taxAmount).abs();
         if (diff.compareTo(TOLERANCE) > 0) {

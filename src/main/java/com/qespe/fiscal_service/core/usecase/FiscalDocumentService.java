@@ -24,6 +24,7 @@ import com.qespe.fiscal_service.core.port.out.FiscalSeriesRepositoryPort;
 import com.qespe.fiscal_service.core.validation.FiscalDocumentConsistencyValidator;
 import com.qespe.fiscal_service.shared.exception.BusinessException;
 import com.qespe.fiscal_service.shared.exception.NotFoundException;
+import com.qespe.fiscal_service.shared.util.FiscalTaxRateUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
@@ -249,7 +250,7 @@ public class FiscalDocumentService implements FiscalDocumentUseCase {
         entity.setUnitPrice(line.unitPrice());
         entity.setUnitValue(line.unitValue());
         entity.setTaxAffectationCode(line.taxAffectationCode());
-        entity.setIgvRate(line.igvRate());
+        entity.setIgvRate(FiscalTaxRateUtils.normalizeRatio(line.igvRate()));
         entity.setIscRate(line.iscRate());
         entity.setDiscountAmount(line.discountAmount());
         entity.setTaxableBaseAmount(line.taxableBaseAmount());
