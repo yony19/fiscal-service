@@ -65,6 +65,9 @@ public class FiscalDocumentEntity extends AuditableEntity {
     @Column(name = "document_type_code", nullable = false, length = 10)
     private String documentTypeCode;
 
+    @Column(name = "operation_type_code", length = 10)
+    private String operationTypeCode;
+
     @Column(name = "issue_date", nullable = false)
     private LocalDate issueDate;
 

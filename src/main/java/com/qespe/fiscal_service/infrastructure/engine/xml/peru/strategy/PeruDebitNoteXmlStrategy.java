@@ -23,6 +23,7 @@ public class PeruDebitNoteXmlStrategy extends BasePeruUblDocumentXmlStrategy {
 
         appendUblCoreHeaders(xml, root, document);
         XmlDomUtils.append(xml, root, PeruUblNamespaces.CBC, "cbc:DebitNoteTypeCode", document.getDocumentTypeCode());
+        appendDocumentCurrencyCode(xml, root, document);
 
         Element discrepancy = XmlDomUtils.append(xml, root, PeruUblNamespaces.CAC, "cac:DiscrepancyResponse", null);
         XmlDomUtils.append(xml, discrepancy, PeruUblNamespaces.CBC, "cbc:ReferenceID", safe(document.getRelatedDocumentNumber(), document.getFullNumber()));

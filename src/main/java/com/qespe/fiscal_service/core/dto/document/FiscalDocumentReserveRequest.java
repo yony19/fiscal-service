@@ -26,6 +26,7 @@ public record FiscalDocumentReserveRequest(
         @NotBlank String idempotencyKey,
         @NotBlank String documentType,
         @NotBlank String documentTypeCode,
+        String operationTypeCode,
         @NotNull LocalDate issueDate,
         LocalTime issueTime,
         @NotBlank String currencyCode,

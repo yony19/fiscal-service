@@ -22,7 +22,8 @@ public class PeruReceiptXmlStrategy extends BasePeruUblDocumentXmlStrategy {
         Element root = XmlDomUtils.createRoot(xml, PeruUblNamespaces.UBL_INVOICE, "Invoice");
 
         appendUblCoreHeaders(xml, root, document);
-        XmlDomUtils.append(xml, root, PeruUblNamespaces.CBC, "cbc:InvoiceTypeCode", document.getDocumentTypeCode());
+        appendInvoiceTypeCode(xml, root, document);
+        appendDocumentCurrencyCode(xml, root, document);
 
         appendSupplierParty(xml, root, document, emitterContext);
         appendCustomerParty(xml, root, document);

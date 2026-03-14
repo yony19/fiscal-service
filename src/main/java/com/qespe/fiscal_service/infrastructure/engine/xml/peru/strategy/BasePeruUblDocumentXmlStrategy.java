@@ -17,12 +17,23 @@ public abstract class BasePeruUblDocumentXmlStrategy implements PeruUblDocumentX
 
         XmlDomUtils.append(doc, root, PeruUblNamespaces.CBC, "cbc:UBLVersionID", "2.1");
         XmlDomUtils.append(doc, root, PeruUblNamespaces.CBC, "cbc:CustomizationID", "2.0");
+        XmlDomUtils.append(doc, root, PeruUblNamespaces.CBC, "cbc:ProfileID", resolveOperationTypeCode(fiscalDocument));
         XmlDomUtils.append(doc, root, PeruUblNamespaces.CBC, "cbc:ID", fiscalDocument.getFullNumber());
         XmlDomUtils.append(doc, root, PeruUblNamespaces.CBC, "cbc:IssueDate", fiscalDocument.getIssueDate().toString());
         if (fiscalDocument.getIssueTime() != null) {
             XmlDomUtils.append(doc, root, PeruUblNamespaces.CBC, "cbc:IssueTime", fiscalDocument.getIssueTime().toString());
         }
+    }
+
+    protected void appendDocumentCurrencyCode(Document doc, Element root, FiscalDocumentEntity fiscalDocument) {
         XmlDomUtils.append(doc, root, PeruUblNamespaces.CBC, "cbc:DocumentCurrencyCode", fiscalDocument.getCurrencyCode());
+    }
+
+    protected void appendInvoiceTypeCode(Document doc, Element root, FiscalDocumentEntity fiscalDocument) {
+        Element invoiceTypeCode = XmlDomUtils.append(doc, root, PeruUblNamespaces.CBC, "cbc:InvoiceTypeCode", fiscalDocument.getDocumentTypeCode());
+        invoiceTypeCode.setAttribute("listID", resolveOperationTypeCode(fiscalDocument));
+        invoiceTypeCode.setAttribute("listAgencyName", "PE:SUNAT");
+        invoiceTypeCode.setAttribute("listName", "Tipo de Documento");
     }
 
     protected void appendSupplierParty(Document doc, Element root, FiscalDocumentEntity fiscalDocument, EmitterContext emitterContext) {
@@ -38,12 +49,10 @@ public abstract class BasePeruUblDocumentXmlStrategy implements PeruUblDocumentX
 
         Element address = XmlDomUtils.append(doc, legalEntity, PeruUblNamespaces.CAC, "cac:RegistrationAddress", null);
         XmlDomUtils.append(doc, address, PeruUblNamespaces.CBC, "cbc:AddressTypeCode", fiscalDocument.getSeries());
-        XmlDomUtils.append(doc, address, PeruUblNamespaces.CBC, "cbc:CityName", safe(fiscalDocument.getCountryCode()));
-        XmlDomUtils.append(doc, address, PeruUblNamespaces.CBC, "cbc:AddressLine", null)
-                .appendChild(doc.createElementNS(PeruUblNamespaces.CBC, "cbc:Line"));
-
-        Element line = (Element) address.getLastChild().getLastChild();
-        line.setTextContent(safe(emitterContext.fiscalAddress()));
+        Element addressLine = XmlDomUtils.append(doc, address, PeruUblNamespaces.CAC, "cac:AddressLine", null);
+        XmlDomUtils.append(doc, addressLine, PeruUblNamespaces.CBC, "cbc:Line", safe(emitterContext.fiscalAddress()));
+        Element country = XmlDomUtils.append(doc, address, PeruUblNamespaces.CAC, "cac:Country", null);
+        XmlDomUtils.append(doc, country, PeruUblNamespaces.CBC, "cbc:IdentificationCode", safe(fiscalDocument.getCountryCode(), "PE"));
     }
 
     protected void appendCustomerParty(Document doc, Element root, FiscalDocumentEntity fiscalDocument) {
@@ -138,5 +147,13 @@ public abstract class BasePeruUblDocumentXmlStrategy implements PeruUblDocumentX
             return fallback;
         }
         return value;
+    }
+
+    protected String resolveOperationTypeCode(FiscalDocumentEntity fiscalDocument) {
+        if (fiscalDocument.getOperationTypeCode() != null && !fiscalDocument.getOperationTypeCode().isBlank()) {
+            return fiscalDocument.getOperationTypeCode().trim();
+        }
+        // Default SUNAT sale operation for local taxable/internal sales.
+        return "0101";
     }
 }

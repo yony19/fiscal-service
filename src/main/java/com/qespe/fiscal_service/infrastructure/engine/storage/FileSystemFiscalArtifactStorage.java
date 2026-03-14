@@ -49,8 +49,8 @@ public class FileSystemFiscalArtifactStorage implements FiscalArtifactStoragePor
     }
 
     @Override
-    public StoredArtifactResult storeZip(FiscalDocumentEntity document, byte[] zipContent) {
-        return storeBytes(document, zipContent, zipPath, sanitizeFilename(document.getFullNumber()) + ".zip");
+    public StoredArtifactResult storeZip(FiscalDocumentEntity document, byte[] zipContent, String zipFilename) {
+        return storeBytes(document, zipContent, zipPath, sanitizeFilename(zipFilename));
     }
 
     @Override

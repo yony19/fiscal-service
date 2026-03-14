@@ -178,6 +178,7 @@ public class FiscalDocumentService implements FiscalDocumentUseCase {
         doc.setIdempotencyKey(request.idempotencyKey());
         doc.setDocumentType(request.documentType());
         doc.setDocumentTypeCode(request.documentTypeCode());
+        doc.setOperationTypeCode(request.operationTypeCode());
         doc.setIssueDate(request.issueDate());
         doc.setIssueTime(request.issueTime());
         doc.setSeriesRef(series);

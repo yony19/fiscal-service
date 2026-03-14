@@ -53,9 +53,11 @@ public class SunatSoapFiscalSender implements FiscalSenderPort {
         validateInputs(signedArtifactResult, providerContext);
 
         SunatCredentials credentials = resolveCredentials(providerContext);
-        byte[] zipBytes = zipSignedXml(document, signedArtifactResult);
-        StoredArtifactResult storedZip = artifactStoragePort.storeZip(document, zipBytes);
-        String zipFilename = safeFilename(document.getFullNumber()) + ".zip";
+        String officialBaseName = buildOfficialDocumentBaseName(document);
+        String xmlFilename = officialBaseName + ".xml";
+        String zipFilename = officialBaseName + ".zip";
+        byte[] zipBytes = zipSignedXml(signedArtifactResult, xmlFilename);
+        StoredArtifactResult storedZip = artifactStoragePort.storeZip(document, zipBytes, zipFilename);
         String soapBody = buildSoapEnvelope(credentials, zipFilename, zipBytes);
 
         try {
@@ -169,8 +171,7 @@ public class SunatSoapFiscalSender implements FiscalSenderPort {
         return json.substring(startQuote + 1, endQuote);
     }
 
-    private byte[] zipSignedXml(FiscalDocumentEntity document, SignedArtifactResult signedArtifactResult) {
-        String xmlFilename = safeFilename(document.getFullNumber()) + ".xml";
+    private byte[] zipSignedXml(SignedArtifactResult signedArtifactResult, String xmlFilename) {
         try {
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
             try (ZipOutputStream zos = new ZipOutputStream(baos, StandardCharsets.UTF_8)) {
@@ -182,6 +183,24 @@ public class SunatSoapFiscalSender implements FiscalSenderPort {
         } catch (Exception ex) {
             throw new BusinessException("Unable to package signed XML for SUNAT send");
         }
+    }
+
+    private String buildOfficialDocumentBaseName(FiscalDocumentEntity document) {
+        String emitterNumber = requireValue(document.getEmitterDocumentNumber(), "Emitter document number is required for SUNAT filename");
+        String documentTypeCode = requireValue(document.getDocumentTypeCode(), "Document type code is required for SUNAT filename");
+        String series = requireValue(document.getSeries(), "Series is required for SUNAT filename");
+        Long number = document.getNumber();
+        if (number == null) {
+            throw new BusinessException("Correlative number is required for SUNAT filename");
+        }
+        return safeFilename(emitterNumber) + "-" + safeFilename(documentTypeCode) + "-" + safeFilename(series) + "-" + number;
+    }
+
+    private String requireValue(String value, String message) {
+        if (value == null || value.isBlank()) {
+            throw new BusinessException(message);
+        }
+        return value.trim();
     }
 
     private String buildSoapEnvelope(SunatCredentials credentials, String zipFilename, byte[] zipBytes) {

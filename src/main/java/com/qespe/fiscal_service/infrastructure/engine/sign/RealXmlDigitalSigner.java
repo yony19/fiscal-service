@@ -132,8 +132,8 @@ public class RealXmlDigitalSigner implements FiscalSignerPort {
         tf.setFeature(XMLConstants.FEATURE_SECURE_PROCESSING, true);
         Transformer transformer = tf.newTransformer();
         transformer.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
-        transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-        transformer.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "2");
+        // Do not pretty-print after signing. Extra whitespace nodes can change the canonicalized digest that SUNAT verifies.
+        transformer.setOutputProperty(OutputKeys.INDENT, "no");
         StringWriter writer = new StringWriter();
         transformer.transform(new DOMSource(document), new StreamResult(writer));
         return writer.toString();

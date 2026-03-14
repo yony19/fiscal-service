@@ -21,6 +21,7 @@ public record FiscalDocumentResponse(
         String idempotencyKey,
         String documentType,
         String documentTypeCode,
+        String operationTypeCode,
         LocalDate issueDate,
         LocalTime issueTime,
         String series,
