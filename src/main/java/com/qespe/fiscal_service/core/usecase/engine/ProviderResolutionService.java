@@ -39,9 +39,14 @@ public class ProviderResolutionService {
                 selected.getProviderCode(),
                 selected.getEnvironment(),
                 selected.getEndpointSubmitUrl(),
+                selected.getEndpointStatusUrl(),
+                selected.getEndpointCdrUrl(),
+                selected.getAuthType(),
+                selected.getCredentialRef(),
                 selected.getTimeoutMs(),
                 selected.getMaxRetries(),
-                selected.getRetryBackoffMs()
+                selected.getRetryBackoffMs(),
+                selected.getConfigJson()
         );
     }
 }

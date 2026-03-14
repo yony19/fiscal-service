@@ -3,6 +3,7 @@ package com.qespe.fiscal_service.infrastructure.engine.mock;
 import com.qespe.fiscal_service.core.domain.engine.ProviderContext;
 import com.qespe.fiscal_service.core.domain.engine.SendResult;
 import com.qespe.fiscal_service.core.domain.engine.SignedArtifactResult;
+import com.qespe.fiscal_service.core.domain.enums.FiscalDocumentStatus;
 import com.qespe.fiscal_service.core.port.out.FiscalSenderPort;
 import com.qespe.fiscal_service.infrastructure.persistence.entity.FiscalDocumentEntity;
 import com.qespe.fiscal_service.shared.exception.BusinessException;
@@ -17,7 +18,7 @@ public class MockFiscalSender implements FiscalSenderPort {
             throw new BusinessException("Signed XML artifact path is required for send step");
         }
         return new SendResult(
-                true,
+                FiscalDocumentStatus.ACCEPTED,
                 "MOCK_ACCEPTED",
                 "Mock successful processing",
                 "MOCK-TICKET-" + document.getId(),

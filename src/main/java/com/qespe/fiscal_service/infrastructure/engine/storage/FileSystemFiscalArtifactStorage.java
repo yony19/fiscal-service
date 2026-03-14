@@ -44,7 +44,16 @@ public class FileSystemFiscalArtifactStorage implements FiscalArtifactStoragePor
         return store(document, signedXmlContent, signedPath, sanitizeFilename(document.getFullNumber()) + "-signed.xml");
     }
 
+    @Override
+    public StoredArtifactResult storeCdr(FiscalDocumentEntity document, byte[] cdrZipContent) {
+        return storeBytes(document, cdrZipContent, cdrPath, sanitizeFilename(document.getFullNumber()) + "-cdr.zip");
+    }
+
     private StoredArtifactResult store(FiscalDocumentEntity document, String content, Path rootDir, String filename) {
+        return storeBytes(document, content.getBytes(StandardCharsets.UTF_8), rootDir, filename);
+    }
+
+    private StoredArtifactResult storeBytes(FiscalDocumentEntity document, byte[] bytes, Path rootDir, String filename) {
         if (!"FILE_SYSTEM".equalsIgnoreCase(properties.getStorageMode())) {
             throw new BusinessException("Unsupported fiscal artifacts storage mode: " + properties.getStorageMode());
         }
@@ -56,8 +65,7 @@ public class FileSystemFiscalArtifactStorage implements FiscalArtifactStoragePor
         }
 
         try {
-            byte[] bytes = content.getBytes(StandardCharsets.UTF_8);
-            Files.writeString(file, content, StandardCharsets.UTF_8);
+            Files.write(file, bytes);
             return new StoredArtifactResult(file.toString(), sha256(bytes), bytes.length);
         } catch (IOException ex) {
             throw new BusinessException("Unable to store fiscal XML artifact");

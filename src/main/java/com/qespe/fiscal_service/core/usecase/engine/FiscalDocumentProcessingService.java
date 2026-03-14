@@ -111,7 +111,7 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
             SendResult sendResult = sender.send(document, signed, providerContext);
 
             if (sendResult.accepted()) {
-                transition(document, FiscalDocumentStatus.ACCEPTED, "Mock send accepted", "SEND_ACCEPTED", Map.of("authorityCode", sendResult.authorityStatusCode()));
+                transition(document, FiscalDocumentStatus.ACCEPTED, "Authority send accepted", "SEND_ACCEPTED", Map.of("authorityCode", sendResult.authorityStatusCode()));
                 document.setAuthorityStatusCode(sendResult.authorityStatusCode());
                 document.setAuthorityStatusMessage(sendResult.authorityStatusMessage());
                 document.setAuthorityTicket(sendResult.authorityTicket());
@@ -119,12 +119,22 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
                 document.setAcceptedAt(Instant.now());
                 document.setErrorCode(null);
                 document.setErrorMessage(null);
-            } else {
-                transition(document, FiscalDocumentStatus.ERROR, "Mock send failed", "SEND_FAILED", Map.of("authorityCode", sendResult.authorityStatusCode()));
+            } else if (sendResult.rejected()) {
+                transition(document, FiscalDocumentStatus.REJECTED, "Authority send rejected", "SEND_REJECTED", Map.of("authorityCode", sendResult.authorityStatusCode()));
                 document.setAuthorityStatusCode(sendResult.authorityStatusCode());
                 document.setAuthorityStatusMessage(sendResult.authorityStatusMessage());
-                document.setErrorCode("MOCK_SEND_FAILED");
-                document.setErrorMessage("Mock sender returned non-accepted response");
+                document.setAuthorityTicket(sendResult.authorityTicket());
+                document.setCdrPath(sendResult.cdrPath());
+                document.setErrorCode("SUNAT_REJECTED");
+                document.setErrorMessage(sendResult.authorityStatusMessage());
+            } else {
+                transition(document, FiscalDocumentStatus.ERROR, "Authority send failed", "SEND_FAILED", Map.of("authorityCode", sendResult.authorityStatusCode()));
+                document.setAuthorityStatusCode(sendResult.authorityStatusCode());
+                document.setAuthorityStatusMessage(sendResult.authorityStatusMessage());
+                document.setAuthorityTicket(sendResult.authorityTicket());
+                document.setCdrPath(sendResult.cdrPath());
+                document.setErrorCode("SEND_FAILED");
+                document.setErrorMessage(sendResult.authorityStatusMessage());
             }
 
             documentRepository.save(document);
