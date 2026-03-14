@@ -48,7 +48,7 @@ public class PeruCreditNoteXmlStrategy extends BasePeruUblDocumentXmlStrategy {
             Element creditLine = XmlDomUtils.append(xml, root, PeruUblNamespaces.CAC, "cac:CreditNoteLine", null);
             XmlDomUtils.append(xml, creditLine, PeruUblNamespaces.CBC, "cbc:ID", String.valueOf(line.getLineNo()));
             Element qty = XmlDomUtils.append(xml, creditLine, PeruUblNamespaces.CBC, "cbc:CreditedQuantity", XmlDomUtils.decimalQty(line.getQuantity()));
-            qty.setAttribute("unitCode", safe(line.getUnitCode(), "NIU"));
+            qty.setAttribute("unitCode", normalizeFiscalUnitCode(line.getUnitCode()));
             XmlDomUtils.appendAmount(xml, creditLine, "cbc:LineExtensionAmount", document.getCurrencyCode(), line.getTaxableBaseAmount());
             appendLineTax(xml, creditLine, document, line);
 

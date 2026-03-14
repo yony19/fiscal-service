@@ -48,7 +48,7 @@ public class PeruDebitNoteXmlStrategy extends BasePeruUblDocumentXmlStrategy {
             Element debitLine = XmlDomUtils.append(xml, root, PeruUblNamespaces.CAC, "cac:DebitNoteLine", null);
             XmlDomUtils.append(xml, debitLine, PeruUblNamespaces.CBC, "cbc:ID", String.valueOf(line.getLineNo()));
             Element qty = XmlDomUtils.append(xml, debitLine, PeruUblNamespaces.CBC, "cbc:DebitedQuantity", XmlDomUtils.decimalQty(line.getQuantity()));
-            qty.setAttribute("unitCode", safe(line.getUnitCode(), "NIU"));
+            qty.setAttribute("unitCode", normalizeFiscalUnitCode(line.getUnitCode()));
             XmlDomUtils.appendAmount(xml, debitLine, "cbc:LineExtensionAmount", document.getCurrencyCode(), line.getTaxableBaseAmount());
             appendLineTax(xml, debitLine, document, line);
 

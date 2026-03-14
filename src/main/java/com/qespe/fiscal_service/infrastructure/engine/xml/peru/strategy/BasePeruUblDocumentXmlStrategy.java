@@ -8,6 +8,8 @@ import com.qespe.fiscal_service.infrastructure.persistence.entity.FiscalDocument
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 
+import java.math.BigDecimal;
+
 public abstract class BasePeruUblDocumentXmlStrategy implements PeruUblDocumentXmlStrategy {
 
     protected void appendUblCoreHeaders(Document doc, Element root, FiscalDocumentEntity fiscalDocument) {
@@ -98,7 +100,7 @@ public abstract class BasePeruUblDocumentXmlStrategy implements PeruUblDocumentX
         XmlDomUtils.append(doc, invoiceLine, PeruUblNamespaces.CBC, "cbc:ID", String.valueOf(line.getLineNo()));
 
         Element qty = XmlDomUtils.append(doc, invoiceLine, PeruUblNamespaces.CBC, "cbc:InvoicedQuantity", XmlDomUtils.decimalQty(line.getQuantity()));
-        qty.setAttribute("unitCode", safe(line.getUnitCode(), "NIU"));
+        qty.setAttribute("unitCode", normalizeFiscalUnitCode(line.getUnitCode()));
 
         XmlDomUtils.appendAmount(doc, invoiceLine, "cbc:LineExtensionAmount", fiscalDocument.getCurrencyCode(), line.getTaxableBaseAmount());
 
@@ -129,6 +131,10 @@ public abstract class BasePeruUblDocumentXmlStrategy implements PeruUblDocumentX
         XmlDomUtils.appendAmount(doc, sub, "cbc:TaxAmount", fiscalDocument.getCurrencyCode(), line.getTaxAmount());
 
         Element cat = XmlDomUtils.append(doc, sub, PeruUblNamespaces.CAC, "cac:TaxCategory", null);
+        BigDecimal igvRate = resolveLineIgvRate(line);
+        if (igvRate != null) {
+            XmlDomUtils.append(doc, cat, PeruUblNamespaces.CBC, "cbc:Percent", igvRate.stripTrailingZeros().toPlainString());
+        }
         if (line.getTaxAffectationCode() != null && !line.getTaxAffectationCode().isBlank()) {
             XmlDomUtils.append(doc, cat, PeruUblNamespaces.CBC, "cbc:TaxExemptionReasonCode", line.getTaxAffectationCode());
         }
@@ -155,5 +161,34 @@ public abstract class BasePeruUblDocumentXmlStrategy implements PeruUblDocumentX
         }
         // Default SUNAT sale operation for local taxable/internal sales.
         return "0101";
+    }
+
+    protected String normalizeFiscalUnitCode(String unitCode) {
+        if (unitCode == null || unitCode.isBlank()) {
+            return "NIU";
+        }
+
+        String normalized = unitCode.trim().toUpperCase();
+        return switch (normalized) {
+            case "UN", "UND", "UNI", "UNIT", "UNIDAD" -> "NIU";
+            default -> normalized;
+        };
+    }
+
+    protected BigDecimal resolveLineIgvRate(FiscalDocumentLineEntity line) {
+        if (line.getIgvRate() != null) {
+            return line.getIgvRate();
+        }
+        if (isTaxableAffectation(line.getTaxAffectationCode())) {
+            return new BigDecimal("18");
+        }
+        return null;
+    }
+
+    protected boolean isTaxableAffectation(String taxAffectationCode) {
+        if (taxAffectationCode == null || taxAffectationCode.isBlank()) {
+            return true;
+        }
+        return taxAffectationCode.trim().startsWith("10");
     }
 }
