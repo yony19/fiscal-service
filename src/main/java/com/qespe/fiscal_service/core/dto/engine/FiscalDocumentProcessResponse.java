@@ -10,6 +10,8 @@ public record FiscalDocumentProcessResponse(
         String authorityStatusMessage,
         String xmlPath,
         String signedXmlPath,
+        String zipPath,
+        String responsePath,
         String cdrPath,
         Integer sendAttemptCount,
         Boolean retryableError,

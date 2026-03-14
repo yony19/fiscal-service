@@ -10,6 +10,7 @@ El `fiscal-service` ya soporta:
 - firma real con certificado PKCS#12
 - sender SUNAT beta
 - persistencia de XML, signed XML y CDR
+- persistencia de ZIP enviado y hash de CDR
 - clasificacion base de errores recuperables vs no recuperables
 - reproceso desde `SIGNED` para errores recuperables de envio
 - contador y programacion base de retry para fallos recuperables de envio
@@ -29,6 +30,11 @@ El `fiscal-service` ya soporta:
 - `last_error_at`
 - `retry_count`
 - `next_retry_at`
+- `zip_path`
+- `zip_hash`
+- `response_path`
+- `response_hash`
+- `cdr_hash`
 
 ### Significado
 
@@ -69,6 +75,7 @@ El `fiscal-service` ya soporta:
 El endpoint:
 
 - `POST /fiscal/documents/{id}/process`
+- `POST /fiscal/documents/{id}/retry`
 
 ahora puede continuar desde:
 
@@ -89,6 +96,18 @@ ahora puede continuar desde:
 7. `next_retry_at` se calcula segun provider
 8. Nuevo `POST /process` despues de la ventana de retry
 9. El sistema reanuda desde el signed XML ya existente
+
+## Endpoint recomendado para reintento explicito
+
+Para integraciones externas conviene usar:
+
+- `POST /fiscal/documents/{id}/retry`
+
+Regla actual:
+
+- solo aplica a documentos en `XML_GENERATED`, `SIGNED` o `ERROR`
+- si el documento no esta habilitado por ventana de retry, el pipeline dejara `PROCESSING_SKIPPED`
+- el evento `RETRY_REQUESTED` deja trazabilidad del intento manual
 
 ## Flujo que no debe reintentarse automaticamente
 
@@ -117,6 +136,12 @@ Validar:
 - `nextRetryAt`
 - `xmlPath`
 - `signedXmlPath`
+- `zipPath`
+- `zipHash`
+- `responsePath`
+- `responseHash`
+- `cdrPath`
+- `cdrHash`
 
 ### `GET /fiscal/documents/{id}/events`
 
@@ -128,6 +153,7 @@ Validar eventos como:
 - `SEND_ATTEMPTED`
 - `SEND_FAILED`
 - `PROCESSING_RESUMED`
+- `RETRY_REQUESTED`
 - `PROCESSING_SKIPPED` con `nextRetryAt` cuando aun no corresponde reintentar
 
 ## Prueba recomendada de error recuperable

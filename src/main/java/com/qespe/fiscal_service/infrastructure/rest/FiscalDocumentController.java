@@ -34,6 +34,11 @@ public class FiscalDocumentController {
         return processingUseCase.process(id);
     }
 
+    @PostMapping("/{id}/retry")
+    public FiscalDocumentProcessResponse retry(@PathVariable UUID id) {
+        return processingUseCase.retry(id);
+    }
+
     @GetMapping("/{id}")
     public FiscalDocumentResponse getById(@PathVariable UUID id) {
         return useCase.getById(id);

@@ -1,0 +1,8 @@
+ALTER TABLE fiscal_document
+    ADD COLUMN IF NOT EXISTS zip_path TEXT NULL;
+
+ALTER TABLE fiscal_document
+    ADD COLUMN IF NOT EXISTS zip_hash VARCHAR(128) NULL;
+
+ALTER TABLE fiscal_document
+    ADD COLUMN IF NOT EXISTS cdr_hash VARCHAR(128) NULL;

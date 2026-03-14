@@ -21,6 +21,8 @@ public class FileSystemFiscalArtifactStorage implements FiscalArtifactStoragePor
     private final Path basePath;
     private final Path xmlPath;
     private final Path signedPath;
+    private final Path zipPath;
+    private final Path responsePath;
     private final Path cdrPath;
     private final Path logsPath;
 
@@ -29,6 +31,8 @@ public class FileSystemFiscalArtifactStorage implements FiscalArtifactStoragePor
         this.basePath = properties.resolvedBasePath();
         this.xmlPath = basePath.resolve("xml");
         this.signedPath = basePath.resolve("signed");
+        this.zipPath = basePath.resolve("zip");
+        this.responsePath = basePath.resolve("responses");
         this.cdrPath = basePath.resolve("cdr");
         this.logsPath = basePath.resolve("logs");
         createDirectories();
@@ -42,6 +46,16 @@ public class FileSystemFiscalArtifactStorage implements FiscalArtifactStoragePor
     @Override
     public StoredArtifactResult storeSignedXml(FiscalDocumentEntity document, String signedXmlContent) {
         return store(document, signedXmlContent, signedPath, sanitizeFilename(document.getFullNumber()) + "-signed.xml");
+    }
+
+    @Override
+    public StoredArtifactResult storeZip(FiscalDocumentEntity document, byte[] zipContent) {
+        return storeBytes(document, zipContent, zipPath, sanitizeFilename(document.getFullNumber()) + ".zip");
+    }
+
+    @Override
+    public StoredArtifactResult storeResponse(FiscalDocumentEntity document, String responseContent) {
+        return store(document, responseContent, responsePath, sanitizeFilename(document.getFullNumber()) + "-response.xml");
     }
 
     @Override
@@ -76,6 +90,8 @@ public class FileSystemFiscalArtifactStorage implements FiscalArtifactStoragePor
         try {
             Files.createDirectories(xmlPath);
             Files.createDirectories(signedPath);
+            Files.createDirectories(zipPath);
+            Files.createDirectories(responsePath);
             Files.createDirectories(cdrPath);
             Files.createDirectories(logsPath);
         } catch (IOException ex) {

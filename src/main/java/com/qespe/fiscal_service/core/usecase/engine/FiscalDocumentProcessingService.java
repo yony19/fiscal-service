@@ -124,7 +124,12 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
                 document.setAuthorityStatusCode(sendResult.authorityStatusCode());
                 document.setAuthorityStatusMessage(sendResult.authorityStatusMessage());
                 document.setAuthorityTicket(sendResult.authorityTicket());
+                document.setZipPath(sendResult.zipPath());
+                document.setZipHash(sendResult.zipHash());
+                document.setResponsePath(sendResult.responsePath());
+                document.setResponseHash(sendResult.responseHash());
                 document.setCdrPath(sendResult.cdrPath());
+                document.setCdrHash(sendResult.cdrHash());
                 document.setAcceptedAt(Instant.now());
                 clearRetryMetadata(document);
             } else if (sendResult.rejected()) {
@@ -132,7 +137,12 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
                 document.setAuthorityStatusCode(sendResult.authorityStatusCode());
                 document.setAuthorityStatusMessage(sendResult.authorityStatusMessage());
                 document.setAuthorityTicket(sendResult.authorityTicket());
+                document.setZipPath(sendResult.zipPath());
+                document.setZipHash(sendResult.zipHash());
+                document.setResponsePath(sendResult.responsePath());
+                document.setResponseHash(sendResult.responseHash());
                 document.setCdrPath(sendResult.cdrPath());
+                document.setCdrHash(sendResult.cdrHash());
                 document.setRejectedAt(Instant.now());
                 document.setErrorCode("SUNAT_REJECTED");
                 document.setErrorMessage(sendResult.authorityStatusMessage());
@@ -144,7 +154,12 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
                 document.setAuthorityStatusCode(sendResult.authorityStatusCode());
                 document.setAuthorityStatusMessage(sendResult.authorityStatusMessage());
                 document.setAuthorityTicket(sendResult.authorityTicket());
+                document.setZipPath(sendResult.zipPath());
+                document.setZipHash(sendResult.zipHash());
+                document.setResponsePath(sendResult.responsePath());
+                document.setResponseHash(sendResult.responseHash());
                 document.setCdrPath(sendResult.cdrPath());
+                document.setCdrHash(sendResult.cdrHash());
                 document.setErrorCode(sendResult.authorityStatusCode() == null || sendResult.authorityStatusCode().isBlank() ? "SEND_FAILED" : sendResult.authorityStatusCode());
                 document.setErrorMessage(sendResult.authorityStatusMessage());
                 document.setRetryableError(sendResult.retryableError());
@@ -171,6 +186,30 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
             markError(document, "PROCESSING_ERROR", "Unexpected processing failure", "UNEXPECTED_ERROR", inferFailedStage(document), false);
             return toResponse(document);
         }
+    }
+
+    @Override
+    @Transactional
+    public FiscalDocumentProcessResponse retry(UUID fiscalDocumentId) {
+        FiscalDocumentEntity document = documentRepository.findWithLinesById(fiscalDocumentId)
+                .orElseThrow(() -> new NotFoundException("Fiscal document not found: " + fiscalDocumentId));
+
+        boolean explicitRetryCandidate = document.getStatus() == FiscalDocumentStatus.ERROR
+                || document.getStatus() == FiscalDocumentStatus.SIGNED
+                || document.getStatus() == FiscalDocumentStatus.XML_GENERATED;
+
+        if (!explicitRetryCandidate) {
+            throw new BusinessException("Retry is only allowed for retry candidates in XML_GENERATED, SIGNED or ERROR status");
+        }
+
+        appendEvent(document, "RETRY_REQUESTED", "Explicit retry requested", Map.of(
+                "status", document.getStatus().name(),
+                "retryableError", document.getRetryableError(),
+                "lastFailedStage", document.getLastFailedStage() == null ? null : document.getLastFailedStage().name(),
+                "nextRetryAt", document.getNextRetryAt()
+        ));
+
+        return process(fiscalDocumentId);
     }
 
     private boolean canProcess(FiscalDocumentEntity document) {
@@ -351,6 +390,8 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
                 document.getAuthorityStatusMessage(),
                 document.getXmlPath(),
                 document.getSignedXmlPath(),
+                document.getZipPath(),
+                document.getResponsePath(),
                 document.getCdrPath(),
                 document.getSendAttemptCount(),
                 document.getRetryableError(),

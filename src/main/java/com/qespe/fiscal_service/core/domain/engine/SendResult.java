@@ -7,7 +7,12 @@ public record SendResult(
         String authorityStatusCode,
         String authorityStatusMessage,
         String authorityTicket,
+        String zipPath,
+        String zipHash,
+        String responsePath,
+        String responseHash,
         String cdrPath,
+        String cdrHash,
         boolean retryableError
 ) {
     public boolean accepted() {

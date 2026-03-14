@@ -21,7 +21,10 @@ Estado actual:
 ## Artefactos
 
 - El XML firmado se envia comprimido como `{fullNumber}.zip`.
+- El ZIP enviado se persiste en el storage fiscal y su metadata queda disponible en BD.
+- La respuesta SOAP cruda del provider tambien se persiste para diagnostico.
 - El CDR retornado por SUNAT se guarda como `{fullNumber}-cdr.zip`.
+- El hash del ZIP y del CDR tambien se persisten para trazabilidad.
 
 ## Limitaciones de esta primera version
 

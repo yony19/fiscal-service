@@ -22,7 +22,12 @@ public class MockFiscalSender implements FiscalSenderPort {
                 "MOCK_ACCEPTED",
                 "Mock successful processing",
                 "MOCK-TICKET-" + document.getId(),
+                "mock://artifacts/zip/" + document.getId() + ".zip",
+                "mock-zip-hash",
+                "mock://artifacts/responses/" + document.getId() + ".xml",
+                "mock-response-hash",
                 "mock://artifacts/cdr/" + document.getId() + ".zip",
+                "mock-cdr-hash",
                 false
         );
     }
