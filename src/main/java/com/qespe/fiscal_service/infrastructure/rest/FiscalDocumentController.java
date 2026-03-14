@@ -39,6 +39,11 @@ public class FiscalDocumentController {
         return processingUseCase.retry(id);
     }
 
+    @PostMapping("/{id}/status")
+    public FiscalDocumentProcessResponse queryStatus(@PathVariable UUID id) {
+        return processingUseCase.queryStatus(id);
+    }
+
     @GetMapping("/{id}")
     public FiscalDocumentResponse getById(@PathVariable UUID id) {
         return useCase.getById(id);

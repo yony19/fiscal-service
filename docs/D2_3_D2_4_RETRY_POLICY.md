@@ -22,6 +22,7 @@ El `fiscal-service` ya soporta:
 - `ACCEPTED`: SUNAT acepto el documento
 - `REJECTED`: SUNAT rechazo el documento por negocio fiscal
 - `ERROR`: fallo tecnico o de proceso
+- `TICKETED`: SUNAT acepto la recepcion pero exige consulta posterior por ticket
 
 ### Campos nuevos en `fiscal_document`
 
@@ -76,6 +77,7 @@ El endpoint:
 
 - `POST /fiscal/documents/{id}/process`
 - `POST /fiscal/documents/{id}/retry`
+- `POST /fiscal/documents/{id}/status`
 
 ahora puede continuar desde:
 
@@ -108,6 +110,19 @@ Regla actual:
 - solo aplica a documentos en `XML_GENERATED`, `SIGNED` o `ERROR`
 - si el documento no esta habilitado por ventana de retry, el pipeline dejara `PROCESSING_SKIPPED`
 - el evento `RETRY_REQUESTED` deja trazabilidad del intento manual
+
+## Consulta de ticket
+
+Para documentos en `TICKETED` existe:
+
+- `POST /fiscal/documents/{id}/status`
+
+Regla actual:
+
+- solo aplica a documentos `TICKETED`
+- requiere `authorityTicket`
+- si SUNAT responde pendiente, el documento se mantiene en `TICKETED`
+- si SUNAT responde con CDR final, el documento pasa a `ACCEPTED` o `REJECTED`
 
 ## Flujo que no debe reintentarse automaticamente
 

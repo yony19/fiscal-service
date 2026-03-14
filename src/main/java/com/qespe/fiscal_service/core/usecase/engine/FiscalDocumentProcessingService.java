@@ -132,6 +132,21 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
                 document.setCdrHash(sendResult.cdrHash());
                 document.setAcceptedAt(Instant.now());
                 clearRetryMetadata(document);
+            } else if (sendResult.ticketed()) {
+                transition(document, FiscalDocumentStatus.TICKETED, "Authority send ticketed", "SEND_TICKETED", Map.of(
+                        "authorityCode", sendResult.authorityStatusCode(),
+                        "authorityTicket", sendResult.authorityTicket()
+                ));
+                document.setAuthorityStatusCode(sendResult.authorityStatusCode());
+                document.setAuthorityStatusMessage(sendResult.authorityStatusMessage());
+                document.setAuthorityTicket(sendResult.authorityTicket());
+                document.setZipPath(sendResult.zipPath());
+                document.setZipHash(sendResult.zipHash());
+                document.setResponsePath(sendResult.responsePath());
+                document.setResponseHash(sendResult.responseHash());
+                document.setCdrPath(sendResult.cdrPath());
+                document.setCdrHash(sendResult.cdrHash());
+                clearRetryMetadata(document);
             } else if (sendResult.rejected()) {
                 transition(document, FiscalDocumentStatus.REJECTED, "Authority send rejected", "SEND_REJECTED", Map.of("authorityCode", sendResult.authorityStatusCode()));
                 document.setAuthorityStatusCode(sendResult.authorityStatusCode());
@@ -210,6 +225,72 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
         ));
 
         return process(fiscalDocumentId);
+    }
+
+    @Override
+    @Transactional
+    public FiscalDocumentProcessResponse queryStatus(UUID fiscalDocumentId) {
+        FiscalDocumentEntity document = documentRepository.findWithLinesById(fiscalDocumentId)
+                .orElseThrow(() -> new NotFoundException("Fiscal document not found: " + fiscalDocumentId));
+
+        if (document.getStatus() != FiscalDocumentStatus.TICKETED) {
+            throw new BusinessException("Status query is only allowed for documents in TICKETED status");
+        }
+        if (document.getAuthorityTicket() == null || document.getAuthorityTicket().isBlank()) {
+            throw new BusinessException("Authority ticket is required to query fiscal status");
+        }
+
+        ProviderContext providerContext = providerResolver.resolve(document);
+        appendEvent(document, "STATUS_QUERY_REQUESTED", "Authority status query requested", Map.of(
+                "authorityTicket", document.getAuthorityTicket(),
+                "providerCode", providerContext.providerCode()
+        ));
+
+        StatusResult statusResult = sender.queryStatus(document, providerContext);
+        document.setAuthorityStatusCode(statusResult.authorityStatusCode());
+        document.setAuthorityStatusMessage(statusResult.authorityStatusMessage());
+        document.setAuthorityTicket(statusResult.authorityTicket());
+        document.setResponsePath(statusResult.responsePath());
+        document.setResponseHash(statusResult.responseHash());
+        document.setCdrPath(statusResult.cdrPath());
+        document.setCdrHash(statusResult.cdrHash());
+
+        if (statusResult.accepted()) {
+            transition(document, FiscalDocumentStatus.ACCEPTED, "Authority ticket accepted", "STATUS_QUERY_ACCEPTED", Map.of("authorityCode", statusResult.authorityStatusCode()));
+            document.setAcceptedAt(Instant.now());
+            clearRetryMetadata(document);
+        } else if (statusResult.documentStatus() == FiscalDocumentStatus.TICKETED) {
+            appendEvent(document, "STATUS_QUERY_PENDING", "Authority ticket remains in process", Map.of(
+                    "authorityCode", statusResult.authorityStatusCode(),
+                    "authorityTicket", statusResult.authorityTicket()
+            ));
+            document.setRetryableError(statusResult.retryableError());
+            document.setLastFailedStage(FiscalProcessingStage.SEND);
+            document.setLastErrorAt(Instant.now());
+            applyRetryPolicy(document, providerContext, statusResult.retryableError());
+        } else if (statusResult.rejected()) {
+            transition(document, FiscalDocumentStatus.REJECTED, "Authority ticket rejected", "STATUS_QUERY_REJECTED", Map.of("authorityCode", statusResult.authorityStatusCode()));
+            document.setRejectedAt(Instant.now());
+            document.setErrorCode("SUNAT_REJECTED");
+            document.setErrorMessage(statusResult.authorityStatusMessage());
+            document.setRetryableError(false);
+            document.setLastFailedStage(FiscalProcessingStage.SEND);
+            document.setLastErrorAt(Instant.now());
+        } else if (statusResult.observed()) {
+            transition(document, FiscalDocumentStatus.OBSERVED, "Authority ticket observed", "STATUS_QUERY_OBSERVED", Map.of("authorityCode", statusResult.authorityStatusCode()));
+            clearRetryMetadata(document);
+        } else if (statusResult.failed()) {
+            transition(document, FiscalDocumentStatus.ERROR, "Authority ticket query failed", "STATUS_QUERY_FAILED", Map.of("authorityCode", statusResult.authorityStatusCode()));
+            document.setErrorCode(statusResult.authorityStatusCode() == null || statusResult.authorityStatusCode().isBlank() ? "STATUS_QUERY_FAILED" : statusResult.authorityStatusCode());
+            document.setErrorMessage(statusResult.authorityStatusMessage());
+            document.setRetryableError(statusResult.retryableError());
+            document.setLastFailedStage(FiscalProcessingStage.SEND);
+            document.setLastErrorAt(Instant.now());
+            applyRetryPolicy(document, providerContext, statusResult.retryableError());
+        }
+
+        documentRepository.save(document);
+        return toResponse(document);
     }
 
     private boolean canProcess(FiscalDocumentEntity document) {

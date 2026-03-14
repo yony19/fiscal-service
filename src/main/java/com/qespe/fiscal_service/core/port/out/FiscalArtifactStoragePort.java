@@ -8,5 +8,6 @@ public interface FiscalArtifactStoragePort {
     StoredArtifactResult storeSignedXml(FiscalDocumentEntity document, String signedXmlContent);
     StoredArtifactResult storeZip(FiscalDocumentEntity document, byte[] zipContent);
     StoredArtifactResult storeResponse(FiscalDocumentEntity document, String responseContent);
+    StoredArtifactResult storeStatusResponse(FiscalDocumentEntity document, String responseContent);
     StoredArtifactResult storeCdr(FiscalDocumentEntity document, byte[] cdrZipContent);
 }

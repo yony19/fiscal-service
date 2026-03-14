@@ -2,13 +2,11 @@ package com.qespe.fiscal_service.core.domain.engine;
 
 import com.qespe.fiscal_service.core.domain.enums.FiscalDocumentStatus;
 
-public record SendResult(
+public record StatusResult(
         FiscalDocumentStatus documentStatus,
         String authorityStatusCode,
         String authorityStatusMessage,
         String authorityTicket,
-        String zipPath,
-        String zipHash,
         String responsePath,
         String responseHash,
         String cdrPath,
@@ -23,8 +21,8 @@ public record SendResult(
         return documentStatus == FiscalDocumentStatus.REJECTED;
     }
 
-    public boolean ticketed() {
-        return documentStatus == FiscalDocumentStatus.TICKETED;
+    public boolean observed() {
+        return documentStatus == FiscalDocumentStatus.OBSERVED;
     }
 
     public boolean failed() {

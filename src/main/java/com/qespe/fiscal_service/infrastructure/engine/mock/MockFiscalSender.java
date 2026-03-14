@@ -3,6 +3,7 @@ package com.qespe.fiscal_service.infrastructure.engine.mock;
 import com.qespe.fiscal_service.core.domain.engine.ProviderContext;
 import com.qespe.fiscal_service.core.domain.engine.SendResult;
 import com.qespe.fiscal_service.core.domain.engine.SignedArtifactResult;
+import com.qespe.fiscal_service.core.domain.engine.StatusResult;
 import com.qespe.fiscal_service.core.domain.enums.FiscalDocumentStatus;
 import com.qespe.fiscal_service.core.port.out.FiscalSenderPort;
 import com.qespe.fiscal_service.infrastructure.persistence.entity.FiscalDocumentEntity;
@@ -26,6 +27,21 @@ public class MockFiscalSender implements FiscalSenderPort {
                 "mock-zip-hash",
                 "mock://artifacts/responses/" + document.getId() + ".xml",
                 "mock-response-hash",
+                "mock://artifacts/cdr/" + document.getId() + ".zip",
+                "mock-cdr-hash",
+                false
+        );
+    }
+
+    @Override
+    public StatusResult queryStatus(FiscalDocumentEntity document, ProviderContext providerContext) {
+        return new StatusResult(
+                FiscalDocumentStatus.ACCEPTED,
+                "0",
+                "Mock status accepted",
+                document.getAuthorityTicket(),
+                "mock://artifacts/responses/" + document.getId() + "-status-response.xml",
+                "mock-status-response-hash",
                 "mock://artifacts/cdr/" + document.getId() + ".zip",
                 "mock-cdr-hash",
                 false

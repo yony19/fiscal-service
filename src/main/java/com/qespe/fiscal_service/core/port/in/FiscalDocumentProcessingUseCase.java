@@ -7,4 +7,5 @@ import java.util.UUID;
 public interface FiscalDocumentProcessingUseCase {
     FiscalDocumentProcessResponse process(UUID fiscalDocumentId);
     FiscalDocumentProcessResponse retry(UUID fiscalDocumentId);
+    FiscalDocumentProcessResponse queryStatus(UUID fiscalDocumentId);
 }

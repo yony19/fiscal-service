@@ -14,7 +14,8 @@ public final class FiscalDocumentStateMachine {
             FiscalDocumentStatus.XML_GENERATED, Set.of(FiscalDocumentStatus.SIGNED, FiscalDocumentStatus.ERROR),
             FiscalDocumentStatus.SIGNED, Set.of(FiscalDocumentStatus.QUEUED_FOR_SEND, FiscalDocumentStatus.ERROR),
             FiscalDocumentStatus.QUEUED_FOR_SEND, Set.of(FiscalDocumentStatus.SENT, FiscalDocumentStatus.ERROR),
-            FiscalDocumentStatus.SENT, Set.of(FiscalDocumentStatus.ACCEPTED, FiscalDocumentStatus.REJECTED, FiscalDocumentStatus.OBSERVED, FiscalDocumentStatus.ERROR)
+            FiscalDocumentStatus.SENT, Set.of(FiscalDocumentStatus.TICKETED, FiscalDocumentStatus.ACCEPTED, FiscalDocumentStatus.REJECTED, FiscalDocumentStatus.OBSERVED, FiscalDocumentStatus.ERROR),
+            FiscalDocumentStatus.TICKETED, Set.of(FiscalDocumentStatus.ACCEPTED, FiscalDocumentStatus.REJECTED, FiscalDocumentStatus.OBSERVED, FiscalDocumentStatus.ERROR)
     );
 
     private FiscalDocumentStateMachine() {

@@ -59,6 +59,11 @@ public class FileSystemFiscalArtifactStorage implements FiscalArtifactStoragePor
     }
 
     @Override
+    public StoredArtifactResult storeStatusResponse(FiscalDocumentEntity document, String responseContent) {
+        return store(document, responseContent, responsePath, sanitizeFilename(document.getFullNumber()) + "-status-response.xml");
+    }
+
+    @Override
     public StoredArtifactResult storeCdr(FiscalDocumentEntity document, byte[] cdrZipContent) {
         return storeBytes(document, cdrZipContent, cdrPath, sanitizeFilename(document.getFullNumber()) + "-cdr.zip");
     }

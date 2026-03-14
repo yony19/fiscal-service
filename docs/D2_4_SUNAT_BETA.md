@@ -4,6 +4,9 @@ Estado actual:
 - El `FiscalSenderPort` ya usa `SunatSoapFiscalSender` como implementacion primaria.
 - El flujo arma ZIP del XML firmado, invoca `sendBill` por SOAP y procesa `applicationResponse` o `Fault`.
 - El documento ahora puede terminar en `ACCEPTED`, `REJECTED` o `ERROR` segun la respuesta de SUNAT.
+- El modelo ya contempla `TICKETED` para respuestas asincronas, aunque `getStatus` aun no esta implementado.
+- El contrato de aplicacion ya expone una operacion de consulta de estado para documentos `TICKETED`.
+- El adapter SUNAT ya tiene una primera implementacion de `getStatus` por ticket.
 
 ## Credenciales del provider
 
@@ -29,5 +32,6 @@ Estado actual:
 ## Limitaciones de esta primera version
 
 - Implementa `sendBill` sincronico.
-- No implementa aun consulta por ticket (`getStatus`) ni flujos de resumen/baja.
+- `getStatus` esta implementado en una primera version y asume la semantica comun de estados `0`, `98` y `99`.
 - El parser clasifica `ResponseCode = 0` como `ACCEPTED`; cualquier otro codigo del CDR se clasifica como `REJECTED`.
+- `authority_ticket` se reserva para el ticket tecnico de SUNAT, no para tickets operativos del POS o `sales-service`.

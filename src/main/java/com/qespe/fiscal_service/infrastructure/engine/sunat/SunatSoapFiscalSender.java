@@ -3,6 +3,7 @@ package com.qespe.fiscal_service.infrastructure.engine.sunat;
 import com.qespe.fiscal_service.core.domain.engine.ProviderContext;
 import com.qespe.fiscal_service.core.domain.engine.SendResult;
 import com.qespe.fiscal_service.core.domain.engine.SignedArtifactResult;
+import com.qespe.fiscal_service.core.domain.engine.StatusResult;
 import com.qespe.fiscal_service.core.domain.engine.StoredArtifactResult;
 import com.qespe.fiscal_service.core.domain.enums.FiscalDocumentStatus;
 import com.qespe.fiscal_service.core.port.out.FiscalArtifactStoragePort;
@@ -67,6 +68,35 @@ public class SunatSoapFiscalSender implements FiscalSenderPort {
             throw ex;
         } catch (Exception ex) {
             return new SendResult(FiscalDocumentStatus.ERROR, "SEND_TRANSPORT_ERROR", "SUNAT send failed", null, storedZip.path(), storedZip.sha256(), null, null, null, null, true);
+        }
+    }
+
+    @Override
+    public StatusResult queryStatus(FiscalDocumentEntity document, ProviderContext providerContext) {
+        if (document.getAuthorityTicket() == null || document.getAuthorityTicket().isBlank()) {
+            throw new BusinessException("Authority ticket is required for SUNAT status query");
+        }
+
+        String endpoint = providerContext.endpointStatusUrl() != null && !providerContext.endpointStatusUrl().isBlank()
+                ? providerContext.endpointStatusUrl()
+                : providerContext.endpointSubmitUrl();
+        if (endpoint == null || endpoint.isBlank()) {
+            throw new BusinessException("Provider status endpoint is required for SUNAT status query");
+        }
+
+        SunatCredentials credentials = resolveCredentials(providerContext);
+        String soapBody = buildGetStatusEnvelope(credentials, document.getAuthorityTicket());
+
+        try {
+            ResponseEntity<String> response = buildRestTemplate(providerContext.timeoutMs())
+                    .postForEntity(endpoint, buildHttpEntity(soapBody), String.class);
+            return parseStatusSoapResponse(document, response.getBody());
+        } catch (HttpStatusCodeException ex) {
+            return parseStatusSoapResponse(document, ex.getResponseBodyAsString());
+        } catch (BusinessException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            return new StatusResult(FiscalDocumentStatus.ERROR, "STATUS_TRANSPORT_ERROR", "SUNAT status query failed", document.getAuthorityTicket(), null, null, null, null, true);
         }
     }
 
@@ -184,6 +214,33 @@ public class SunatSoapFiscalSender implements FiscalSenderPort {
         );
     }
 
+    private String buildGetStatusEnvelope(SunatCredentials credentials, String ticket) {
+        return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                                  xmlns:ser="http://service.sunat.gob.pe"
+                                  xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+                  <soapenv:Header>
+                    <wsse:Security>
+                      <wsse:UsernameToken>
+                        <wsse:Username>%s</wsse:Username>
+                        <wsse:Password>%s</wsse:Password>
+                      </wsse:UsernameToken>
+                    </wsse:Security>
+                  </soapenv:Header>
+                  <soapenv:Body>
+                    <ser:getStatus>
+                      <ticket>%s</ticket>
+                    </ser:getStatus>
+                  </soapenv:Body>
+                </soapenv:Envelope>
+                """.formatted(
+                escapeXml(credentials.username()),
+                escapeXml(credentials.password()),
+                escapeXml(ticket)
+        );
+    }
+
     private SendResult parseSoapResponse(FiscalDocumentEntity document, String body, StoredArtifactResult storedZip) {
         StoredArtifactResult storedResponse = storeResponseIfPresent(document, body);
         if (body == null || body.isBlank()) {
@@ -241,11 +298,90 @@ public class SunatSoapFiscalSender implements FiscalSenderPort {
         }
     }
 
+    private StatusResult parseStatusSoapResponse(FiscalDocumentEntity document, String body) {
+        StoredArtifactResult storedResponse = storeStatusResponseIfPresent(document, body);
+        if (body == null || body.isBlank()) {
+            return new StatusResult(FiscalDocumentStatus.ERROR, "EMPTY_RESPONSE", "SUNAT returned empty status response", document.getAuthorityTicket(), responsePath(storedResponse), responseHash(storedResponse), null, null, true);
+        }
+
+        try {
+            Document soapDoc = parseXml(body);
+            Element fault = firstElementByLocalName(soapDoc.getDocumentElement(), "Fault");
+            if (fault != null) {
+                String faultCode = childText(fault, "faultcode");
+                String faultMessage = childText(fault, "faultstring");
+                return new StatusResult(
+                        FiscalDocumentStatus.ERROR,
+                        blankToDefault(faultCode, "SOAP_FAULT"),
+                        blankToDefault(faultMessage, "SUNAT SOAP fault"),
+                        document.getAuthorityTicket(),
+                        responsePath(storedResponse),
+                        responseHash(storedResponse),
+                        null,
+                        null,
+                        true
+                );
+            }
+
+            Element status = firstElementByLocalName(soapDoc.getDocumentElement(), "status");
+            if (status == null) {
+                return new StatusResult(FiscalDocumentStatus.ERROR, "INVALID_RESPONSE", "SUNAT status response did not include status node", document.getAuthorityTicket(), responsePath(storedResponse), responseHash(storedResponse), null, null, true);
+            }
+
+            String statusCode = blankToDefault(textByLocalName(status, "statusCode"), "UNKNOWN");
+            String statusMessage = textByLocalName(status, "statusMessage");
+            String content = textByLocalName(status, "content");
+
+            if ("98".equals(statusCode)) {
+                return new StatusResult(FiscalDocumentStatus.TICKETED, statusCode, blankToDefault(statusMessage, "SUNAT ticket is still in process"), document.getAuthorityTicket(), responsePath(storedResponse), responseHash(storedResponse), null, null, true);
+            }
+
+            if (content == null || content.isBlank()) {
+                return new StatusResult(FiscalDocumentStatus.ERROR, statusCode, blankToDefault(statusMessage, "SUNAT status response did not include CDR content"), document.getAuthorityTicket(), responsePath(storedResponse), responseHash(storedResponse), null, null, true);
+            }
+
+            byte[] cdrZipBytes = Base64.getDecoder().decode(content.trim());
+            StoredArtifactResult storedCdr = artifactStoragePort.storeCdr(document, cdrZipBytes);
+            CdrInfo cdrInfo = extractCdrInfo(cdrZipBytes);
+            FiscalDocumentStatus finalStatus = switch (statusCode) {
+                case "0" -> FiscalDocumentStatus.ACCEPTED;
+                case "99" -> FiscalDocumentStatus.REJECTED;
+                default -> FiscalDocumentStatus.ERROR;
+            };
+            String authorityMessage = cdrInfo.description() == null || cdrInfo.description().isBlank()
+                    ? blankToDefault(statusMessage, "SUNAT status query completed")
+                    : cdrInfo.description();
+
+            return new StatusResult(
+                    finalStatus,
+                    cdrInfo.responseCode(),
+                    authorityMessage,
+                    document.getAuthorityTicket(),
+                    responsePath(storedResponse),
+                    responseHash(storedResponse),
+                    storedCdr.path(),
+                    storedCdr.sha256(),
+                    false
+            );
+        } catch (BusinessException ex) {
+            return new StatusResult(FiscalDocumentStatus.ERROR, "STATUS_PARSE_ERROR", ex.getMessage(), document.getAuthorityTicket(), responsePath(storedResponse), responseHash(storedResponse), null, null, true);
+        } catch (Exception ex) {
+            return new StatusResult(FiscalDocumentStatus.ERROR, "STATUS_PARSE_ERROR", "Unable to parse SUNAT status response", document.getAuthorityTicket(), responsePath(storedResponse), responseHash(storedResponse), null, null, true);
+        }
+    }
+
     private StoredArtifactResult storeResponseIfPresent(FiscalDocumentEntity document, String body) {
         if (body == null || body.isBlank()) {
             return null;
         }
         return artifactStoragePort.storeResponse(document, body);
+    }
+
+    private StoredArtifactResult storeStatusResponseIfPresent(FiscalDocumentEntity document, String body) {
+        if (body == null || body.isBlank()) {
+            return null;
+        }
+        return artifactStoragePort.storeStatusResponse(document, body);
     }
 
     private String responsePath(StoredArtifactResult storedResponse) {

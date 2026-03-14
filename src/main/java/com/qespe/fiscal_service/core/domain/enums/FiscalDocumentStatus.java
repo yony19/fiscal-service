@@ -7,6 +7,7 @@ public enum FiscalDocumentStatus {
     SIGNED,
     QUEUED_FOR_SEND,
     SENT,
+    TICKETED,
     ACCEPTED,
     OBSERVED,
     REJECTED,
