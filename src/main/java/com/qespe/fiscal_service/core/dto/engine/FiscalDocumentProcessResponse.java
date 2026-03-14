@@ -12,6 +12,10 @@ public record FiscalDocumentProcessResponse(
         String signedXmlPath,
         String cdrPath,
         Integer sendAttemptCount,
+        Boolean retryableError,
+        String lastFailedStage,
+        Integer retryCount,
+        Instant nextRetryAt,
         Instant processedAt
 ) {
 }

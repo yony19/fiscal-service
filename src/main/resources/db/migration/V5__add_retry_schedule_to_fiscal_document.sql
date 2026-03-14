@@ -1,0 +1,5 @@
+ALTER TABLE fiscal_document
+    ADD COLUMN IF NOT EXISTS retry_count INTEGER NOT NULL DEFAULT 0;
+
+ALTER TABLE fiscal_document
+    ADD COLUMN IF NOT EXISTS next_retry_at TIMESTAMPTZ NULL;

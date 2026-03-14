@@ -7,7 +7,8 @@ public record SendResult(
         String authorityStatusCode,
         String authorityStatusMessage,
         String authorityTicket,
-        String cdrPath
+        String cdrPath,
+        boolean retryableError
 ) {
     public boolean accepted() {
         return documentStatus == FiscalDocumentStatus.ACCEPTED;
@@ -15,5 +16,9 @@ public record SendResult(
 
     public boolean rejected() {
         return documentStatus == FiscalDocumentStatus.REJECTED;
+    }
+
+    public boolean failed() {
+        return documentStatus == FiscalDocumentStatus.ERROR;
     }
 }

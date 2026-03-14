@@ -214,6 +214,8 @@ public class FiscalDocumentService implements FiscalDocumentUseCase {
 
         doc.setStatus(FiscalDocumentStatus.RESERVED);
         doc.setSendAttemptCount(0);
+        doc.setRetryableError(false);
+        doc.setRetryCount(0);
 
         if (request.relatedDocumentId() != null) {
             FiscalDocumentEntity related = new FiscalDocumentEntity();

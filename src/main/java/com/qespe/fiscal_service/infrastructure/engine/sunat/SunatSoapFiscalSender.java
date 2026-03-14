@@ -65,7 +65,7 @@ public class SunatSoapFiscalSender implements FiscalSenderPort {
         } catch (BusinessException ex) {
             throw ex;
         } catch (Exception ex) {
-            throw new BusinessException("SUNAT send failed");
+            return new SendResult(FiscalDocumentStatus.ERROR, "SEND_TRANSPORT_ERROR", "SUNAT send failed", null, null, true);
         }
     }
 
@@ -185,7 +185,7 @@ public class SunatSoapFiscalSender implements FiscalSenderPort {
 
     private SendResult parseSoapResponse(FiscalDocumentEntity document, String body) {
         if (body == null || body.isBlank()) {
-            return new SendResult(FiscalDocumentStatus.ERROR, "EMPTY_RESPONSE", "SUNAT returned empty response", null, null);
+            return new SendResult(FiscalDocumentStatus.ERROR, "EMPTY_RESPONSE", "SUNAT returned empty response", null, null, true);
         }
 
         try {
@@ -195,17 +195,18 @@ public class SunatSoapFiscalSender implements FiscalSenderPort {
                 String faultCode = childText(fault, "faultcode");
                 String faultMessage = childText(fault, "faultstring");
                 return new SendResult(
-                        FiscalDocumentStatus.REJECTED,
+                        FiscalDocumentStatus.ERROR,
                         blankToDefault(faultCode, "SOAP_FAULT"),
                         blankToDefault(faultMessage, "SUNAT SOAP fault"),
                         null,
-                        null
+                        null,
+                        true
                 );
             }
 
             String applicationResponse = textByLocalName(soapDoc.getDocumentElement(), "applicationResponse");
             if (applicationResponse == null || applicationResponse.isBlank()) {
-                return new SendResult(FiscalDocumentStatus.ERROR, "INVALID_RESPONSE", "SUNAT response did not include applicationResponse", null, null);
+                return new SendResult(FiscalDocumentStatus.ERROR, "INVALID_RESPONSE", "SUNAT response did not include applicationResponse", null, null, true);
             }
 
             byte[] cdrZipBytes = Base64.getDecoder().decode(applicationResponse.trim());
@@ -218,12 +219,13 @@ public class SunatSoapFiscalSender implements FiscalSenderPort {
                     cdrInfo.responseCode(),
                     cdrInfo.description(),
                     null,
-                    storedCdr.path()
+                    storedCdr.path(),
+                    false
             );
         } catch (BusinessException ex) {
-            throw ex;
+            return new SendResult(FiscalDocumentStatus.ERROR, "CDR_PROCESSING_ERROR", ex.getMessage(), null, null, true);
         } catch (Exception ex) {
-            return new SendResult(FiscalDocumentStatus.ERROR, "PARSE_ERROR", "Unable to parse SUNAT response", null, null);
+            return new SendResult(FiscalDocumentStatus.ERROR, "PARSE_ERROR", "Unable to parse SUNAT response", null, null, true);
         }
     }
 

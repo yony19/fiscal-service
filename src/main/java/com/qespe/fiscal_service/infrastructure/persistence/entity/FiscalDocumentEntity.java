@@ -2,6 +2,7 @@ package com.qespe.fiscal_service.infrastructure.persistence.entity;
 
 import com.qespe.fiscal_service.core.domain.enums.FiscalDocumentStatus;
 import com.qespe.fiscal_service.core.domain.enums.FiscalEnvironment;
+import com.qespe.fiscal_service.core.domain.enums.FiscalProcessingStage;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -198,6 +199,22 @@ public class FiscalDocumentEntity extends AuditableEntity {
 
     @Column(name = "error_message")
     private String errorMessage;
+
+    @Column(name = "retryable_error", nullable = false)
+    private Boolean retryableError;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "last_failed_stage", length = 40)
+    private FiscalProcessingStage lastFailedStage;
+
+    @Column(name = "last_error_at")
+    private Instant lastErrorAt;
+
+    @Column(name = "retry_count", nullable = false)
+    private Integer retryCount;
+
+    @Column(name = "next_retry_at")
+    private Instant nextRetryAt;
 
     @Column(name = "authority_ticket", length = 120)
     private String authorityTicket;

@@ -13,6 +13,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyStore;
 import java.security.PrivateKey;
+import java.security.cert.CertificateExpiredException;
+import java.security.cert.CertificateNotYetValidException;
 import java.security.cert.X509Certificate;
 import java.util.Base64;
 import java.util.Enumeration;
@@ -44,7 +46,7 @@ public class CertificateMaterialLoader {
         }
 
         String password = secretValueResolver.resolve(context.passwordSecretRef());
-        return parsePkcs12(p12bytes, password == null ? new char[0] : password.toCharArray());
+        return parsePkcs12(p12bytes, password == null ? new char[0] : password.toCharArray(), context.alias());
     }
 
     private byte[] readFromFilePath(String certificatePath) {
@@ -80,28 +82,56 @@ public class CertificateMaterialLoader {
         }
     }
 
-    private CertificateMaterial parsePkcs12(byte[] p12bytes, char[] password) {
+    private CertificateMaterial parsePkcs12(byte[] p12bytes, char[] password, String requestedAlias) {
         try {
             KeyStore ks = KeyStore.getInstance("PKCS12");
             ks.load(new ByteArrayInputStream(p12bytes), password);
+            String alias = resolveAlias(ks, requestedAlias);
+            PrivateKey privateKey = (PrivateKey) ks.getKey(alias, password);
+            X509Certificate cert = (X509Certificate) ks.getCertificate(alias);
 
-            Enumeration<String> aliases = ks.aliases();
-            while (aliases.hasMoreElements()) {
-                String alias = aliases.nextElement();
-                if (!ks.isKeyEntry(alias)) {
-                    continue;
-                }
-                PrivateKey privateKey = (PrivateKey) ks.getKey(alias, password);
-                X509Certificate cert = (X509Certificate) ks.getCertificate(alias);
-                if (privateKey != null && cert != null) {
-                    return new CertificateMaterial(privateKey, cert);
-                }
+            if (privateKey == null || cert == null) {
+                throw new BusinessException("Resolved certificate alias does not contain a usable private key");
             }
-            throw new BusinessException("No private key entry found in certificate keystore");
+
+            validateCertificate(cert);
+            return new CertificateMaterial(privateKey, cert);
         } catch (BusinessException ex) {
             throw ex;
         } catch (Exception ex) {
             throw new BusinessException("Unable to parse certificate material");
+        }
+    }
+
+    private String resolveAlias(KeyStore keyStore, String requestedAlias) throws Exception {
+        if (requestedAlias != null && !requestedAlias.isBlank()) {
+            if (!keyStore.containsAlias(requestedAlias)) {
+                throw new BusinessException("Configured certificate alias was not found in keystore");
+            }
+            if (!keyStore.isKeyEntry(requestedAlias)) {
+                throw new BusinessException("Configured certificate alias does not reference a private key entry");
+            }
+            return requestedAlias;
+        }
+
+        Enumeration<String> aliases = keyStore.aliases();
+        while (aliases.hasMoreElements()) {
+            String alias = aliases.nextElement();
+            if (keyStore.isKeyEntry(alias)) {
+                return alias;
+            }
+        }
+
+        throw new BusinessException("No private key entry found in certificate keystore");
+    }
+
+    private void validateCertificate(X509Certificate certificate) {
+        try {
+            certificate.checkValidity();
+        } catch (CertificateExpiredException ex) {
+            throw new BusinessException("Certificate has expired");
+        } catch (CertificateNotYetValidException ex) {
+            throw new BusinessException("Certificate is not yet valid");
         }
     }
 }
