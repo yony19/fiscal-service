@@ -29,6 +29,8 @@ public class MockFiscalSender implements FiscalSenderPort {
                 "mock-response-hash",
                 "mock://artifacts/cdr/" + document.getId() + ".zip",
                 "mock-cdr-hash",
+                "mock://artifacts/cdr/" + document.getId() + ".xml",
+                "mock-cdr-xml-hash",
                 false
         );
     }
@@ -44,6 +46,8 @@ public class MockFiscalSender implements FiscalSenderPort {
                 "mock-status-response-hash",
                 "mock://artifacts/cdr/" + document.getId() + ".zip",
                 "mock-cdr-hash",
+                "mock://artifacts/cdr/" + document.getId() + ".xml",
+                "mock-cdr-xml-hash",
                 false
         );
     }

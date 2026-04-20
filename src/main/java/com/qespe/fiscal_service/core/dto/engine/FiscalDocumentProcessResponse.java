@@ -13,6 +13,7 @@ public record FiscalDocumentProcessResponse(
         String zipPath,
         String responsePath,
         String cdrPath,
+        String cdrXmlPath,
         Integer sendAttemptCount,
         Boolean retryableError,
         String lastFailedStage,

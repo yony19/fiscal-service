@@ -62,6 +62,8 @@ public record FiscalDocumentResponse(
         String responseHash,
         String cdrPath,
         String cdrHash,
+        String cdrXmlPath,
+        String cdrXmlHash,
         String providerCode,
         Integer sendAttemptCount,
         String errorCode,

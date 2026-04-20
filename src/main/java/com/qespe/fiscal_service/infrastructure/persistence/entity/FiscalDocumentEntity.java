@@ -179,6 +179,9 @@ public class FiscalDocumentEntity extends AuditableEntity {
     @Column(name = "cdr_path")
     private String cdrPath;
 
+    @Column(name = "cdr_xml_path")
+    private String cdrXmlPath;
+
     @Column(name = "zip_path")
     private String zipPath;
 
@@ -199,6 +202,9 @@ public class FiscalDocumentEntity extends AuditableEntity {
 
     @Column(name = "cdr_hash", length = 128)
     private String cdrHash;
+
+    @Column(name = "cdr_xml_hash", length = 128)
+    private String cdrXmlHash;
 
     @Column(name = "response_hash", length = 128)
     private String responseHash;

@@ -68,6 +68,11 @@ public class FileSystemFiscalArtifactStorage implements FiscalArtifactStoragePor
         return storeBytes(document, cdrZipContent, cdrPath, sanitizeFilename(document.getFullNumber()) + "-cdr.zip");
     }
 
+    @Override
+    public StoredArtifactResult storeCdrXml(FiscalDocumentEntity document, String cdrXmlContent, String cdrXmlFilename) {
+        return store(document, cdrXmlContent, cdrPath, sanitizeFilename(cdrXmlFilename));
+    }
+
     private StoredArtifactResult store(FiscalDocumentEntity document, String content, Path rootDir, String filename) {
         return storeBytes(document, content.getBytes(StandardCharsets.UTF_8), rootDir, filename);
     }

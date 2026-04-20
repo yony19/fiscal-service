@@ -5,9 +5,11 @@ import com.qespe.fiscal_service.core.dto.series.FiscalSeriesResponse;
 import com.qespe.fiscal_service.core.port.in.FiscalSeriesUseCase;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -18,8 +20,11 @@ public class FiscalSeriesController {
     private final FiscalSeriesUseCase useCase;
 
     @GetMapping
-    public List<FiscalSeriesResponse> list(@RequestParam UUID companyId) {
-        return useCase.list(companyId);
+    public Page<FiscalSeriesResponse> list(
+            @RequestParam UUID companyId,
+            @PageableDefault(size = 20) Pageable pageable
+    ) {
+        return useCase.list(companyId, pageable);
     }
 
     @GetMapping("/{id}")
@@ -37,4 +42,3 @@ public class FiscalSeriesController {
         return useCase.update(id, request);
     }
 }
-

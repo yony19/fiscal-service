@@ -130,6 +130,8 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
                 document.setResponseHash(sendResult.responseHash());
                 document.setCdrPath(sendResult.cdrPath());
                 document.setCdrHash(sendResult.cdrHash());
+                document.setCdrXmlPath(sendResult.cdrXmlPath());
+                document.setCdrXmlHash(sendResult.cdrXmlHash());
                 document.setAcceptedAt(Instant.now());
                 clearRetryMetadata(document);
             } else if (sendResult.ticketed()) {
@@ -146,6 +148,8 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
                 document.setResponseHash(sendResult.responseHash());
                 document.setCdrPath(sendResult.cdrPath());
                 document.setCdrHash(sendResult.cdrHash());
+                document.setCdrXmlPath(sendResult.cdrXmlPath());
+                document.setCdrXmlHash(sendResult.cdrXmlHash());
                 clearRetryMetadata(document);
             } else if (sendResult.rejected()) {
                 transition(document, FiscalDocumentStatus.REJECTED, "Authority send rejected", "SEND_REJECTED", Map.of("authorityCode", sendResult.authorityStatusCode()));
@@ -158,6 +162,8 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
                 document.setResponseHash(sendResult.responseHash());
                 document.setCdrPath(sendResult.cdrPath());
                 document.setCdrHash(sendResult.cdrHash());
+                document.setCdrXmlPath(sendResult.cdrXmlPath());
+                document.setCdrXmlHash(sendResult.cdrXmlHash());
                 document.setRejectedAt(Instant.now());
                 document.setErrorCode("SUNAT_REJECTED");
                 document.setErrorMessage(sendResult.authorityStatusMessage());
@@ -175,6 +181,8 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
                 document.setResponseHash(sendResult.responseHash());
                 document.setCdrPath(sendResult.cdrPath());
                 document.setCdrHash(sendResult.cdrHash());
+                document.setCdrXmlPath(sendResult.cdrXmlPath());
+                document.setCdrXmlHash(sendResult.cdrXmlHash());
                 document.setErrorCode(sendResult.authorityStatusCode() == null || sendResult.authorityStatusCode().isBlank() ? "SEND_FAILED" : sendResult.authorityStatusCode());
                 document.setErrorMessage(sendResult.authorityStatusMessage());
                 document.setRetryableError(sendResult.retryableError());
@@ -254,6 +262,8 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
         document.setResponseHash(statusResult.responseHash());
         document.setCdrPath(statusResult.cdrPath());
         document.setCdrHash(statusResult.cdrHash());
+        document.setCdrXmlPath(statusResult.cdrXmlPath());
+        document.setCdrXmlHash(statusResult.cdrXmlHash());
 
         if (statusResult.accepted()) {
             transition(document, FiscalDocumentStatus.ACCEPTED, "Authority ticket accepted", "STATUS_QUERY_ACCEPTED", Map.of("authorityCode", statusResult.authorityStatusCode()));
@@ -474,6 +484,7 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
                 document.getZipPath(),
                 document.getResponsePath(),
                 document.getCdrPath(),
+                document.getCdrXmlPath(),
                 document.getSendAttemptCount(),
                 document.getRetryableError(),
                 document.getLastFailedStage() == null ? null : document.getLastFailedStage().name(),

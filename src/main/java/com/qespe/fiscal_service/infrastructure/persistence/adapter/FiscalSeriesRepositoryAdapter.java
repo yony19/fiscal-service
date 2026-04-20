@@ -5,6 +5,8 @@ import com.qespe.fiscal_service.infrastructure.persistence.entity.FiscalSeriesEn
 import com.qespe.fiscal_service.infrastructure.persistence.repository.FiscalSeriesJpaRepository;
 import com.qespe.fiscal_service.core.port.out.FiscalSeriesRepositoryPort;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -33,8 +35,12 @@ public class FiscalSeriesRepositoryAdapter implements FiscalSeriesRepositoryPort
     }
 
     @Override
+    public Page<FiscalSeriesEntity> findByCompanyId(UUID companyId, Pageable pageable) {
+        return repository.findByCompanyId(companyId, pageable);
+    }
+
+    @Override
     public List<FiscalSeriesEntity> findActiveForUpdate(UUID companyId, String countryCode, String taxAuthorityCode, String documentTypeCode, FiscalEnvironment environment) {
         return repository.findActiveForUpdate(companyId, countryCode, taxAuthorityCode, documentTypeCode, environment);
     }
 }
-

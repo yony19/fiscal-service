@@ -8,10 +8,11 @@ import com.qespe.fiscal_service.core.port.in.CompanyCertificateUseCase;
 import com.qespe.fiscal_service.core.port.out.CompanyCertificateRepositoryPort;
 import com.qespe.fiscal_service.shared.exception.NotFoundException;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -46,10 +47,7 @@ public class CompanyCertificateService implements CompanyCertificateUseCase {
 
     @Override
     @Transactional(readOnly = true)
-    public List<CompanyCertificateResponse> list(UUID companyId) {
-        return repository.findByCompanyId(companyId).stream()
-                .map(mapper::toResponse)
-                .toList();
+    public Page<CompanyCertificateResponse> list(UUID companyId, Pageable pageable) {
+        return repository.findByCompanyId(companyId, pageable).map(mapper::toResponse);
     }
 }
-

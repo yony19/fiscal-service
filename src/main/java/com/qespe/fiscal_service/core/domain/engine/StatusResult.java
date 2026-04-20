@@ -11,6 +11,8 @@ public record StatusResult(
         String responseHash,
         String cdrPath,
         String cdrHash,
+        String cdrXmlPath,
+        String cdrXmlHash,
         boolean retryableError
 ) {
     public boolean accepted() {

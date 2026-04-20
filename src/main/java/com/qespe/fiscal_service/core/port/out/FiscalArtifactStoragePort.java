@@ -10,4 +10,5 @@ public interface FiscalArtifactStoragePort {
     StoredArtifactResult storeResponse(FiscalDocumentEntity document, String responseContent);
     StoredArtifactResult storeStatusResponse(FiscalDocumentEntity document, String responseContent);
     StoredArtifactResult storeCdr(FiscalDocumentEntity document, byte[] cdrZipContent);
+    StoredArtifactResult storeCdrXml(FiscalDocumentEntity document, String cdrXmlContent, String cdrXmlFilename);
 }

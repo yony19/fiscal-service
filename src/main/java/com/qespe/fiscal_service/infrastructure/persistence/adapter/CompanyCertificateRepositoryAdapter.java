@@ -4,6 +4,8 @@ import com.qespe.fiscal_service.core.port.out.CompanyCertificateRepositoryPort;
 import com.qespe.fiscal_service.infrastructure.persistence.entity.CompanyCertificateEntity;
 import com.qespe.fiscal_service.infrastructure.persistence.repository.CompanyCertificateJpaRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -29,6 +31,11 @@ public class CompanyCertificateRepositoryAdapter implements CompanyCertificateRe
     @Override
     public List<CompanyCertificateEntity> findByCompanyId(UUID companyId) {
         return repository.findByCompanyId(companyId);
+    }
+
+    @Override
+    public Page<CompanyCertificateEntity> findByCompanyId(UUID companyId, Pageable pageable) {
+        return repository.findByCompanyId(companyId, pageable);
     }
 
     @Override

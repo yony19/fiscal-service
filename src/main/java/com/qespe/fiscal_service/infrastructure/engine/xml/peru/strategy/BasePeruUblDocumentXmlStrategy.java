@@ -51,7 +51,6 @@ public abstract class BasePeruUblDocumentXmlStrategy implements PeruUblDocumentX
         XmlDomUtils.append(doc, legalEntity, PeruUblNamespaces.CBC, "cbc:RegistrationName", safe(emitterContext.legalName()));
 
         Element address = XmlDomUtils.append(doc, legalEntity, PeruUblNamespaces.CAC, "cac:RegistrationAddress", null);
-        XmlDomUtils.append(doc, address, PeruUblNamespaces.CBC, "cbc:AddressTypeCode", fiscalDocument.getSeries());
         Element addressLine = XmlDomUtils.append(doc, address, PeruUblNamespaces.CAC, "cac:AddressLine", null);
         XmlDomUtils.append(doc, addressLine, PeruUblNamespaces.CBC, "cbc:Line", safe(emitterContext.fiscalAddress()));
         Element country = XmlDomUtils.append(doc, address, PeruUblNamespaces.CAC, "cac:Country", null);
