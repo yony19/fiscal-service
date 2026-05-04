@@ -26,7 +26,12 @@ public class CompanyCertificateEntity extends AuditableEntity {
     @Column(name = "alias", nullable = false, length = 80)
     private String alias;
 
-    @Column(name = "storage_mode", nullable = false, length = 20)
+    /**
+     * Nullable since V11: a certificate row can exist as metadata-only before
+     * the user uploads the .pfx. Once uploaded, this is set to
+     * {@code INLINE_ENCRYPTED} automatically and never goes back to null.
+     */
+    @Column(name = "storage_mode", length = 20)
     private String storageMode;
 
     @Column(name = "certificate_path")
@@ -44,16 +49,35 @@ public class CompanyCertificateEntity extends AuditableEntity {
     @Column(name = "secret_ref", length = 200)
     private String secretRef;
 
+    /** Legacy reference. New uploads use {@link #passwordEncrypted} instead. */
     @Column(name = "password_secret_ref", length = 200)
     private String passwordSecretRef;
+
+    /** AES-GCM ciphertext of the .pfx password. Paired with {@link #passwordIv}. */
+    @Column(name = "password_encrypted")
+    private byte[] passwordEncrypted;
+
+    /** GCM nonce / IV for {@link #passwordEncrypted}. 12 bytes. */
+    @Column(name = "password_iv")
+    private byte[] passwordIv;
 
     @Column(name = "fingerprint_sha256", length = 64)
     private String fingerprintSha256;
 
-    @Column(name = "valid_from", nullable = false)
+    /** Original filename of the uploaded .pfx, for friendly UI display. */
+    @Column(name = "upload_filename", length = 255)
+    private String uploadFilename;
+
+    /** When the .pfx was last uploaded. Null = never uploaded yet. */
+    @Column(name = "uploaded_at")
+    private Instant uploadedAt;
+
+    /** Nullable since V11: extracted from cert on upload, null when metadata-only. */
+    @Column(name = "valid_from")
     private Instant validFrom;
 
-    @Column(name = "valid_to", nullable = false)
+    /** Nullable since V11: extracted from cert on upload, null when metadata-only. */
+    @Column(name = "valid_to")
     private Instant validTo;
 
     @Column(name = "status", nullable = false, length = 20)

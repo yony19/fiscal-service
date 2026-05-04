@@ -50,4 +50,9 @@ public class JwtProvider {
         String value = (String) claims.get("companyId");
         return value != null ? UUID.fromString(value) : null;
     }
+
+    public boolean extractSuperadmin(String token) {
+        Boolean value = parseClaims(token).get("superadmin", Boolean.class);
+        return value != null && value;
+    }
 }

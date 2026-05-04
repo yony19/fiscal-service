@@ -24,6 +24,11 @@ public class SecurityUtils {
         return jwtProvider.extractCompanyId(getTokenOrThrow());
     }
 
+    /** Returns true if the JWT bears the "superadmin" claim. */
+    public boolean isSuperadmin() {
+        return jwtProvider.extractSuperadmin(getTokenOrThrow());
+    }
+
     public String getRawToken() {
         return getTokenOrThrow();
     }

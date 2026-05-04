@@ -4,6 +4,12 @@ server:
 spring:
   application:
     name: fiscal-service
+  servlet:
+    multipart:
+      enabled: true
+      # .pfx files are usually 4-10 KB. 10 MB cap is generous + safe.
+      max-file-size: 10MB
+      max-request-size: 10MB
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5432/fiscal}
     username: ${SPRING_DATASOURCE_USERNAME:admin}
@@ -48,3 +54,13 @@ fiscal:
   artifacts:
     storage-mode: FILE_SYSTEM
     base-path: ${FISCAL_ARTIFACTS_BASE_PATH:C:/Users/User/Documents/proyecto personal/pointofsale/resources/fiscal}
+  # AES-GCM master key for encrypting .pfx passwords at rest. MUST be set in
+  # production via env var; the default is for local dev only and is rotated
+  # on every fresh DB. Use any 32+ char random string (32 bytes encoded base64
+  # is preferred). The key is hashed to derive the actual AES key, so length
+  # is the only constraint.
+  security:
+    cert-password-master-key: ${FISCAL_CERT_MASTER_KEY:dev-only-change-me-in-production-please-32+chars}
+  retry:
+    delay-ms: ${FISCAL_RETRY_DELAY_MS:60000}
+    batch-size: ${FISCAL_RETRY_BATCH_SIZE:50}

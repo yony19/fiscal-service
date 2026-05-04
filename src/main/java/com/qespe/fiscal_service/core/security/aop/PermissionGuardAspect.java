@@ -24,6 +24,11 @@ public class PermissionGuardAspect {
     @Before("@annotation(requirePermission)")
     public void checkPermission(RequirePermission requirePermission) {
 
+        // Superadmin bypass (consistent with auth-service aspect and frontend).
+        if (securityUtils.isSuperadmin()) {
+            return;
+        }
+
         UUID userId = securityUtils.getCurrentUserId();
         UUID companyId = securityUtils.getCurrentCompanyId();
 

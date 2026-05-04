@@ -4,6 +4,7 @@ import com.qespe.fiscal_service.core.domain.engine.CertificateContext;
 import com.qespe.fiscal_service.infrastructure.persistence.entity.CompanyCertificateEntity;
 import com.qespe.fiscal_service.infrastructure.persistence.repository.CompanyCertificateJpaRepository;
 import com.qespe.fiscal_service.shared.exception.BusinessException;
+import com.qespe.fiscal_service.shared.security.PasswordEncryptor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -25,6 +26,7 @@ public class CertificateMaterialLoader {
 
     private final CompanyCertificateJpaRepository certificateJpaRepository;
     private final SecretValueResolver secretValueResolver;
+    private final PasswordEncryptor passwordEncryptor;
 
     public CertificateMaterial load(CertificateContext context) {
         CompanyCertificateEntity entity = certificateJpaRepository.findById(context.certificateId())
@@ -45,7 +47,18 @@ public class CertificateMaterialLoader {
             default -> throw new BusinessException("Unsupported certificate storage mode");
         }
 
-        String password = secretValueResolver.resolve(context.passwordSecretRef());
+        // Password resolution priority:
+        // 1. NEW friendly flow: AES-GCM encrypted password in passwordEncrypted/Iv.
+        // 2. LEGACY flow: passwordSecretRef → SecretValueResolver (env, plain, file).
+        // The new flow is detected by the presence of both passwordEncrypted bytes
+        // AND the matching IV; without the IV decryption is impossible.
+        String password;
+        if (entity.getPasswordEncrypted() != null && entity.getPasswordEncrypted().length > 0
+                && entity.getPasswordIv() != null && entity.getPasswordIv().length > 0) {
+            password = passwordEncryptor.decrypt(entity.getPasswordEncrypted(), entity.getPasswordIv());
+        } else {
+            password = secretValueResolver.resolve(context.passwordSecretRef());
+        }
         return parsePkcs12(p12bytes, password == null ? new char[0] : password.toCharArray(), context.alias());
     }
 
