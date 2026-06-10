@@ -38,6 +38,24 @@ public final class XmlDomUtils {
         return root;
     }
 
+    /**
+     * Raiz para documentos resumen SUNAT (RA/RC). A diferencia de
+     * {@link #createRoot} (que solo declara cac/cbc/ext para los comprobantes),
+     * aqui declaramos ademas los namespaces {@code ds} (firma) y {@code sac}
+     * (componentes agregados SUNAT) que exigen VoidedDocuments / SummaryDocuments.
+     */
+    public static Element createSummaryRoot(Document doc, String namespace, String localName) {
+        Element root = doc.createElementNS(namespace, localName);
+        root.setAttribute("xmlns", namespace);
+        root.setAttribute("xmlns:cac", PeruUblNamespaces.CAC);
+        root.setAttribute("xmlns:cbc", PeruUblNamespaces.CBC);
+        root.setAttribute("xmlns:ext", PeruUblNamespaces.EXT);
+        root.setAttribute("xmlns:ds", PeruUblNamespaces.DS);
+        root.setAttribute("xmlns:sac", PeruUblNamespaces.SAC);
+        doc.appendChild(root);
+        return root;
+    }
+
     public static Element append(Document doc, Element parent, String namespace, String qName, String value) {
         Element child = doc.createElementNS(namespace, qName);
         if (value != null) {

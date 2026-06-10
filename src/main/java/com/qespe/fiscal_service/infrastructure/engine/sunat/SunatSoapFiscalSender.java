@@ -11,7 +11,6 @@ import com.qespe.fiscal_service.core.port.out.FiscalSenderPort;
 import com.qespe.fiscal_service.infrastructure.engine.sign.SecretValueResolver;
 import com.qespe.fiscal_service.infrastructure.persistence.entity.FiscalDocumentEntity;
 import com.qespe.fiscal_service.shared.exception.BusinessException;
-import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -37,7 +36,6 @@ import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 
 @Component
-@Primary
 public class SunatSoapFiscalSender implements FiscalSenderPort {
 
     private final SecretValueResolver secretValueResolver;
@@ -46,6 +44,25 @@ public class SunatSoapFiscalSender implements FiscalSenderPort {
     public SunatSoapFiscalSender(SecretValueResolver secretValueResolver, FiscalArtifactStoragePort artifactStoragePort) {
         this.secretValueResolver = secretValueResolver;
         this.artifactStoragePort = artifactStoragePort;
+    }
+
+    /**
+     * Adaptador REAL por defecto: SUNAT directo (SOAP). Soporta los provider_code
+     * SUNAT y, via {@link #isDefault()}, actua de fallback para codes legacy/no
+     * mapeados, preservando el comportamiento previo (cuando era @Primary).
+     */
+    @Override
+    public boolean supports(String providerCode) {
+        if (providerCode == null || providerCode.isBlank()) {
+            return true;
+        }
+        String code = providerCode.trim().toUpperCase();
+        return "SUNAT".equals(code) || "SUNAT_DIRECT".equals(code);
+    }
+
+    @Override
+    public boolean isDefault() {
+        return true;
     }
 
     @Override
@@ -70,6 +87,31 @@ public class SunatSoapFiscalSender implements FiscalSenderPort {
             throw ex;
         } catch (Exception ex) {
             return new SendResult(FiscalDocumentStatus.ERROR, "SEND_TRANSPORT_ERROR", "SUNAT send failed", null, storedZip.path(), storedZip.sha256(), null, null, null, null, null, null, true);
+        }
+    }
+
+    @Override
+    public SendResult sendSummary(FiscalDocumentEntity document, SignedArtifactResult signedArtifactResult, ProviderContext providerContext) {
+        validateInputs(signedArtifactResult, providerContext);
+
+        SunatCredentials credentials = resolveCredentials(providerContext);
+        String officialBaseName = buildSummaryDocumentBaseName(document);
+        String xmlFilename = officialBaseName + ".xml";
+        String zipFilename = officialBaseName + ".zip";
+        byte[] zipBytes = zipSignedXml(signedArtifactResult, xmlFilename);
+        StoredArtifactResult storedZip = artifactStoragePort.storeZip(document, zipBytes, zipFilename);
+        String soapBody = buildSendSummaryEnvelope(credentials, zipFilename, zipBytes);
+
+        try {
+            ResponseEntity<String> response = buildRestTemplate(providerContext.timeoutMs())
+                    .postForEntity(providerContext.endpointSubmitUrl(), buildHttpEntity(soapBody), String.class);
+            return parseSendSummaryResponse(document, response.getBody(), storedZip);
+        } catch (HttpStatusCodeException ex) {
+            return parseSendSummaryResponse(document, ex.getResponseBodyAsString(), storedZip);
+        } catch (BusinessException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            return new SendResult(FiscalDocumentStatus.ERROR, "SEND_TRANSPORT_ERROR", "SUNAT sendSummary failed", null, storedZip.path(), storedZip.sha256(), null, null, null, null, null, null, true);
         }
     }
 
@@ -258,6 +300,67 @@ public class SunatSoapFiscalSender implements FiscalSenderPort {
                 escapeXml(credentials.password()),
                 escapeXml(ticket)
         );
+    }
+
+    private String buildSummaryDocumentBaseName(FiscalDocumentEntity document) {
+        String emitterNumber = requireValue(document.getEmitterDocumentNumber(), "Emitter document number is required for SUNAT summary filename");
+        // El fullNumber del resumen ya trae el formato oficial "RA-YYYYMMDD-NNN" / "RC-YYYYMMDD-NNN".
+        String fullNumber = requireValue(document.getFullNumber(), "Full number (RA/RC-YYYYMMDD-NNN) is required for SUNAT summary filename");
+        return safeFilename(emitterNumber) + "-" + safeFilename(fullNumber);
+    }
+
+    private String buildSendSummaryEnvelope(SunatCredentials credentials, String zipFilename, byte[] zipBytes) {
+        String content = Base64.getEncoder().encodeToString(zipBytes);
+        return """
+                <?xml version="1.0" encoding="UTF-8"?>
+                <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
+                                  xmlns:ser="http://service.sunat.gob.pe"
+                                  xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+                  <soapenv:Header>
+                    <wsse:Security>
+                      <wsse:UsernameToken>
+                        <wsse:Username>%s</wsse:Username>
+                        <wsse:Password>%s</wsse:Password>
+                      </wsse:UsernameToken>
+                    </wsse:Security>
+                  </soapenv:Header>
+                  <soapenv:Body>
+                    <ser:sendSummary>
+                      <fileName>%s</fileName>
+                      <contentFile>%s</contentFile>
+                    </ser:sendSummary>
+                  </soapenv:Body>
+                </soapenv:Envelope>
+                """.formatted(
+                escapeXml(credentials.username()),
+                escapeXml(credentials.password()),
+                escapeXml(zipFilename),
+                content
+        );
+    }
+
+    private SendResult parseSendSummaryResponse(FiscalDocumentEntity document, String body, StoredArtifactResult storedZip) {
+        StoredArtifactResult storedResponse = storeResponseIfPresent(document, body);
+        if (body == null || body.isBlank()) {
+            return new SendResult(FiscalDocumentStatus.ERROR, "EMPTY_RESPONSE", "SUNAT returned empty sendSummary response", null, storedZip.path(), storedZip.sha256(), responsePath(storedResponse), responseHash(storedResponse), null, null, null, null, true);
+        }
+        try {
+            Document soapDoc = parseXml(body);
+            Element fault = firstElementByLocalName(soapDoc.getDocumentElement(), "Fault");
+            if (fault != null) {
+                String faultCode = childText(fault, "faultcode");
+                String faultMessage = childText(fault, "faultstring");
+                return new SendResult(FiscalDocumentStatus.ERROR, blankToDefault(faultCode, "SOAP_FAULT"), blankToDefault(faultMessage, "SUNAT SOAP fault"), null, storedZip.path(), storedZip.sha256(), responsePath(storedResponse), responseHash(storedResponse), null, null, null, null, true);
+            }
+            // La respuesta de sendSummary trae un <ticket>, NO un CDR (ese llega luego via getStatus).
+            String ticket = textByLocalName(soapDoc.getDocumentElement(), "ticket");
+            if (ticket == null || ticket.isBlank()) {
+                return new SendResult(FiscalDocumentStatus.ERROR, "INVALID_RESPONSE", "SUNAT sendSummary response did not include a ticket", null, storedZip.path(), storedZip.sha256(), responsePath(storedResponse), responseHash(storedResponse), null, null, null, null, true);
+            }
+            return new SendResult(FiscalDocumentStatus.TICKETED, "98", "Resumen recibido por SUNAT; pendiente de procesamiento (ticket)", ticket.trim(), storedZip.path(), storedZip.sha256(), responsePath(storedResponse), responseHash(storedResponse), null, null, null, null, false);
+        } catch (Exception ex) {
+            return new SendResult(FiscalDocumentStatus.ERROR, "PARSE_ERROR", "Unable to parse SUNAT sendSummary response", null, storedZip.path(), storedZip.sha256(), responsePath(storedResponse), responseHash(storedResponse), null, null, null, null, true);
+        }
     }
 
     private SendResult parseSoapResponse(FiscalDocumentEntity document, String body, StoredArtifactResult storedZip) {

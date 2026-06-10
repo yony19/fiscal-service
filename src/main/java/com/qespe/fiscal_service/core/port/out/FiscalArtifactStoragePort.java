@@ -11,4 +11,12 @@ public interface FiscalArtifactStoragePort {
     StoredArtifactResult storeStatusResponse(FiscalDocumentEntity document, String responseContent);
     StoredArtifactResult storeCdr(FiscalDocumentEntity document, byte[] cdrZipContent);
     StoredArtifactResult storeCdrXml(FiscalDocumentEntity document, String cdrXmlContent, String cdrXmlFilename);
+
+    /**
+     * Lee de vuelta un artefacto previamente almacenado, dado su path persistido
+     * (ej. {@code document.cdrPath} para la descarga del CDR). La implementacion
+     * DEBE validar que el path este dentro del directorio base configurado
+     * (defensa anti path-traversal, aunque el path venga de la BD).
+     */
+    byte[] readArtifact(String storedPath);
 }

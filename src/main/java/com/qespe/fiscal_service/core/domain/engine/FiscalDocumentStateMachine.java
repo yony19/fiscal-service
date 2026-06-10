@@ -15,7 +15,12 @@ public final class FiscalDocumentStateMachine {
             FiscalDocumentStatus.SIGNED, Set.of(FiscalDocumentStatus.QUEUED_FOR_SEND, FiscalDocumentStatus.ERROR),
             FiscalDocumentStatus.QUEUED_FOR_SEND, Set.of(FiscalDocumentStatus.SENT, FiscalDocumentStatus.ERROR),
             FiscalDocumentStatus.SENT, Set.of(FiscalDocumentStatus.TICKETED, FiscalDocumentStatus.ACCEPTED, FiscalDocumentStatus.REJECTED, FiscalDocumentStatus.OBSERVED, FiscalDocumentStatus.ERROR),
-            FiscalDocumentStatus.TICKETED, Set.of(FiscalDocumentStatus.ACCEPTED, FiscalDocumentStatus.REJECTED, FiscalDocumentStatus.OBSERVED, FiscalDocumentStatus.ERROR)
+            FiscalDocumentStatus.TICKETED, Set.of(FiscalDocumentStatus.ACCEPTED, FiscalDocumentStatus.REJECTED, FiscalDocumentStatus.OBSERVED, FiscalDocumentStatus.ERROR),
+            // Reemision tras rechazo (E1.x): SUNAT trata un CPE REJECTED como NO
+            // emitido, asi que la misma serie-numero puede reemitirse una vez
+            // corregido el dato. La unica salida permitida es regenerar el XML
+            // desde cero (PENDING_XML) — nunca saltar a firmado/enviado.
+            FiscalDocumentStatus.REJECTED, Set.of(FiscalDocumentStatus.PENDING_XML)
     );
 
     private FiscalDocumentStateMachine() {

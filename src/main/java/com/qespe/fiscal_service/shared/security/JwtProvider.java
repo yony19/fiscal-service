@@ -1,11 +1,13 @@
 package com.qespe.fiscal_service.shared.security;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.SecretKey;
@@ -17,6 +19,12 @@ import java.util.UUID;
 public class JwtProvider {
 
     private final JwtProperties props;
+
+    @Value("${security.jwt.audience:pos-api}")
+    private String expectedAudience;
+
+    @Value("${security.jwt.enforce-audience:false}")
+    private boolean enforceAudience;
 
     private SecretKey key;
 
@@ -30,11 +38,18 @@ public class JwtProvider {
     }
 
     private Claims parseClaims(String token) {
-        return Jwts.parser()
+        Claims claims = Jwts.parser()
                 .verifyWith(key)
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+        if (enforceAudience) {
+            java.util.Set<String> aud = claims.getAudience();
+            if (aud == null || !aud.contains(expectedAudience)) {
+                throw new JwtException("Invalid token audience");
+            }
+        }
+        return claims;
     }
 
     public String resolveToken(HttpServletRequest request) {

@@ -11,5 +11,8 @@ public interface FiscalProviderConfigUseCase {
     FiscalProviderConfigResponse update(UUID id, FiscalProviderConfigRequest request);
     FiscalProviderConfigResponse getById(UUID id);
     List<FiscalProviderConfigResponse> list(UUID companyId);
+
+    /** Auto-provision idempotente del proveedor SUNAT por defecto (onboarding). */
+    FiscalProviderConfigResponse ensureDefaultSunatConfig(UUID companyId);
 }
 

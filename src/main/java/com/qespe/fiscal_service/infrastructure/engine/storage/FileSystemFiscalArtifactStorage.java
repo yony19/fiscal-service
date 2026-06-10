@@ -73,6 +73,28 @@ public class FileSystemFiscalArtifactStorage implements FiscalArtifactStoragePor
         return store(document, cdrXmlContent, cdrPath, sanitizeFilename(cdrXmlFilename));
     }
 
+    @Override
+    public byte[] readArtifact(String storedPath) {
+        if (storedPath == null || storedPath.isBlank()) {
+            throw new BusinessException("Artifact path is empty");
+        }
+        // Defensa en profundidad: el path viene de la BD, pero validamos que
+        // este dentro del directorio base para evitar cualquier path-traversal
+        // (../../etc/passwd) si la BD fuera manipulada.
+        Path file = Path.of(storedPath).normalize();
+        if (!file.startsWith(basePath)) {
+            throw new BusinessException("Invalid artifact path");
+        }
+        try {
+            if (!Files.exists(file)) {
+                throw new BusinessException("Artifact not found on disk");
+            }
+            return Files.readAllBytes(file);
+        } catch (IOException ex) {
+            throw new BusinessException("Unable to read fiscal artifact");
+        }
+    }
+
     private StoredArtifactResult store(FiscalDocumentEntity document, String content, Path rootDir, String filename) {
         return storeBytes(document, content.getBytes(StandardCharsets.UTF_8), rootDir, filename);
     }

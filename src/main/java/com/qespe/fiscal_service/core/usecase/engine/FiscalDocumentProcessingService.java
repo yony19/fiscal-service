@@ -24,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -39,7 +40,12 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
     private final FiscalDocumentConsistencyValidator consistencyValidator;
     private final FiscalXmlBuilderPort xmlBuilder;
     private final FiscalSignerPort signer;
-    private final FiscalSenderPort sender;
+    /**
+     * Todos los adaptadores de envio fiscal. El concreto se elige por el providerCode
+     * de la config (no hardcodeado) via {@link #resolveSender}, permitiendo conectar
+     * SUNAT directo, mock, o cualquier OSE por configuracion + un adapter.
+     */
+    private final List<FiscalSenderPort> senders;
 
     @Override
     @Transactional
@@ -117,7 +123,14 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
             transition(document, FiscalDocumentStatus.SENT, "Send attempted", "SEND_ATTEMPTED", Map.of("attempt", document.getSendAttemptCount()));
             document.setSentAt(Instant.now());
 
-            SendResult sendResult = sender.send(document, signedArtifact, providerContext);
+            // Sender pluggable por providerCode (SUNAT directo / mock / OSE futuro).
+            FiscalSenderPort sender = resolveSender(providerContext.providerCode());
+            // Los documentos resumen (Comunicacion de Baja / Resumen Diario) son async:
+            // se envian con sendSummary y SUNAT responde con un ticket (TICKETED). El resto
+            // del pipeline (ramas accepted/ticketed de abajo) ya maneja ambos casos.
+            SendResult sendResult = isSummaryDocument(document)
+                    ? sender.sendSummary(document, signedArtifact, providerContext)
+                    : sender.send(document, signedArtifact, providerContext);
 
             if (sendResult.accepted()) {
                 transition(document, FiscalDocumentStatus.ACCEPTED, "Authority send accepted", "SEND_ACCEPTED", Map.of("authorityCode", sendResult.authorityStatusCode()));
@@ -217,12 +230,28 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
         FiscalDocumentEntity document = documentRepository.findWithLinesById(fiscalDocumentId)
                 .orElseThrow(() -> new NotFoundException("Fiscal document not found: " + fiscalDocumentId));
 
+        // Reemision tras rechazo SUNAT (E1.x): el operador corrigio el dato
+        // (catalogo, cliente, montos) y pide reemitir. Un CPE REJECTED no se
+        // considera emitido, asi que se regenera el XML desde cero con la MISMA
+        // serie-numero y se reenvia. REJECTED -> PENDING_XML esta permitido en
+        // la state machine exclusivamente para este flujo.
+        if (document.getStatus() == FiscalDocumentStatus.REJECTED) {
+            FiscalDocumentStateMachine.assertTransition(FiscalDocumentStatus.REJECTED, FiscalDocumentStatus.PENDING_XML);
+            appendEvent(document, "REISSUE_REQUESTED", "Reissue after SUNAT rejection", Map.of(
+                    "status", document.getStatus().name(),
+                    "fullNumber", document.getFullNumber()
+            ));
+            document.setStatus(FiscalDocumentStatus.PENDING_XML);
+            documentRepository.save(document);
+            return process(fiscalDocumentId);
+        }
+
         boolean explicitRetryCandidate = document.getStatus() == FiscalDocumentStatus.ERROR
                 || document.getStatus() == FiscalDocumentStatus.SIGNED
                 || document.getStatus() == FiscalDocumentStatus.XML_GENERATED;
 
         if (!explicitRetryCandidate) {
-            throw new BusinessException("Retry is only allowed for retry candidates in XML_GENERATED, SIGNED or ERROR status");
+            throw new BusinessException("Retry is only allowed for REJECTED documents (reissue) or candidates in XML_GENERATED, SIGNED or ERROR status");
         }
 
         appendEvent(document, "RETRY_REQUESTED", "Explicit retry requested", Map.of(
@@ -254,6 +283,7 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
                 "providerCode", providerContext.providerCode()
         ));
 
+        FiscalSenderPort sender = resolveSender(providerContext.providerCode());
         StatusResult statusResult = sender.queryStatus(document, providerContext);
         document.setAuthorityStatusCode(statusResult.authorityStatusCode());
         document.setAuthorityStatusMessage(statusResult.authorityStatusMessage());
@@ -269,6 +299,18 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
             transition(document, FiscalDocumentStatus.ACCEPTED, "Authority ticket accepted", "STATUS_QUERY_ACCEPTED", Map.of("authorityCode", statusResult.authorityStatusCode()));
             document.setAcceptedAt(Instant.now());
             clearRetryMetadata(document);
+            // Si lo aceptado es una Comunicacion de Baja, el comprobante
+            // anulado pasa a VOIDED: legalmente deja de existir ante SUNAT
+            // y la UI debe reflejarlo (y bloquear nuevas bajas/NC sobre el).
+            if ("VOID".equalsIgnoreCase(document.getDocumentType())
+                    && document.getRelatedDocument() != null) {
+                FiscalDocumentEntity voided = document.getRelatedDocument();
+                voided.setStatus(FiscalDocumentStatus.VOIDED);
+                documentRepository.save(voided);
+                appendEvent(document, "RELATED_DOCUMENT_VOIDED",
+                        "Original document marked VOIDED after RA acceptance",
+                        Map.of("relatedFullNumber", voided.getFullNumber()));
+            }
         } else if (statusResult.documentStatus() == FiscalDocumentStatus.TICKETED) {
             appendEvent(document, "STATUS_QUERY_PENDING", "Authority ticket remains in process", Map.of(
                     "authorityCode", statusResult.authorityStatusCode(),
@@ -301,6 +343,34 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
 
         documentRepository.save(document);
         return toResponse(document);
+    }
+
+    /**
+     * Documentos resumen SUNAT (async, basados en ticket): se envian con sendSummary
+     * en vez del sendBill sincrono. Hoy: Comunicacion de Baja (VOID) y Resumen Diario.
+     */
+    private boolean isSummaryDocument(FiscalDocumentEntity document) {
+        String type = document.getDocumentType();
+        return "VOID".equalsIgnoreCase(type) || "DAILY_SUMMARY".equalsIgnoreCase(type);
+    }
+
+    /**
+     * Elige el adaptador de envio segun el providerCode de la config (pluggable, no
+     * hardcodeado). 1) el que soporta explicitamente ese code (SUNAT directo / mock /
+     * OSE futuro); 2) si ninguno matchea, el adaptador por defecto (SUNAT directo).
+     */
+    private FiscalSenderPort resolveSender(String providerCode) {
+        for (FiscalSenderPort s : senders) {
+            if (s.supports(providerCode)) {
+                return s;
+            }
+        }
+        for (FiscalSenderPort s : senders) {
+            if (s.isDefault()) {
+                return s;
+            }
+        }
+        throw new BusinessException("No hay adaptador de envio fiscal para el proveedor: " + providerCode);
     }
 
     private boolean canProcess(FiscalDocumentEntity document) {

@@ -46,6 +46,10 @@ logging:
   level:
     '[org.hibernate.SQL]': DEBUG
     '[org.hibernate.type.descriptor.sql]': TRACE
+  # Inyecta el id de correlacion (MDC) del CorrelationIdFilter en cada linea de log,
+  # sin necesidad de un logback-spring.xml. Si no hay id (ej. logs de arranque), queda vacio.
+  pattern:
+    level: "%5p [%X{correlationId:-}]"
 
 auth-service:
   base-url: ${AUTH_SERVICE_BASE_URL:http://localhost:8081}

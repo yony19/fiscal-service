@@ -12,6 +12,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -22,6 +23,13 @@ public interface FiscalDocumentJpaRepository extends JpaRepository<FiscalDocumen
 
     @EntityGraph(attributePaths = {"lines"})
     Optional<FiscalDocumentEntity> findWithLinesById(UUID id);
+
+    /** Boletas (catalogo 01 = 03) de un dia, para construir el Resumen Diario. */
+    List<FiscalDocumentEntity> findByCompanyIdAndDocumentTypeCodeAndIssueDate(
+            UUID companyId, String documentTypeCode, LocalDate issueDate);
+
+    /** Correlativo del RC del dia (RC-YYYYMMDD-NNN). */
+    long countByCompanyIdAndDocumentTypeAndIssueDate(UUID companyId, String documentType, LocalDate issueDate);
 
     @Override
     @EntityGraph(attributePaths = {"lines"})

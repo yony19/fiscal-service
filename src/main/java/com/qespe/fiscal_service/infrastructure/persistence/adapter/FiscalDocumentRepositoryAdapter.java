@@ -9,6 +9,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -42,5 +44,15 @@ public class FiscalDocumentRepositoryAdapter implements FiscalDocumentRepository
     public Page<FiscalDocumentEntity> search(Specification<FiscalDocumentEntity> specification, Pageable pageable) {
         return repository.findAll(specification, pageable);
     }
-}
 
+    @Override
+    public List<FiscalDocumentEntity> findBoletasByIssueDate(java.util.UUID companyId, LocalDate issueDate) {
+        // Catalogo SUNAT 01: 03 = boleta de venta.
+        return repository.findByCompanyIdAndDocumentTypeCodeAndIssueDate(companyId, "03", issueDate);
+    }
+
+    @Override
+    public long countByDocumentTypeAndIssueDate(java.util.UUID companyId, String documentType, LocalDate issueDate) {
+        return repository.countByCompanyIdAndDocumentTypeAndIssueDate(companyId, documentType, issueDate);
+    }
+}

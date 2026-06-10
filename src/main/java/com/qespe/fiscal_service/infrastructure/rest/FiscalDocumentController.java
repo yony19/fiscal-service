@@ -8,15 +8,20 @@ import com.qespe.fiscal_service.core.dto.engine.FiscalDocumentProcessResponse;
 import com.qespe.fiscal_service.core.dto.event.FiscalEventResponse;
 import com.qespe.fiscal_service.core.port.in.FiscalDocumentProcessingUseCase;
 import com.qespe.fiscal_service.core.port.in.FiscalDocumentUseCase;
+import com.qespe.fiscal_service.core.port.out.FiscalArtifactStoragePort;
 import com.qespe.fiscal_service.core.security.annotation.RequirePermission;
 import com.qespe.fiscal_service.infrastructure.security.util.SecurityUtils;
 import com.qespe.fiscal_service.shared.exception.AccessDeniedException;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -27,7 +32,10 @@ public class FiscalDocumentController {
 
     private final FiscalDocumentUseCase useCase;
     private final FiscalDocumentProcessingUseCase processingUseCase;
+    private final FiscalArtifactStoragePort artifactStorage;
     private final SecurityUtils security;
+    private final com.qespe.fiscal_service.core.usecase.engine.DailySummaryService dailySummaryService;
+    private final com.qespe.fiscal_service.core.usecase.engine.VoidDocumentService voidDocumentService;
 
     @RequirePermission("fiscal.fiscal.documents:process")
     @PostMapping("/reserve")
@@ -62,6 +70,53 @@ public class FiscalDocumentController {
     public FiscalDocumentProcessResponse queryStatus(@PathVariable UUID id) {
         assertDocumentTenant(id);
         return processingUseCase.queryStatus(id);
+    }
+
+    /**
+     * Crea el Resumen Diario de boletas (RC) de una fecha y dispara su
+     * procesamiento (XML -> firma -> sendSummary -> ticket). Idempotente por
+     * compania+fecha: repetir la llamada devuelve el RC ya creado. Si el
+     * procesamiento falla (p. ej. sin certificado), el RC queda RESERVED y se
+     * puede reprocesar con POST /{id}/process.
+     */
+    @RequirePermission("fiscal.fiscal.documents:process")
+    @PostMapping("/daily-summary")
+    public FiscalDocumentResponse createDailySummary(
+            @RequestParam UUID companyId,
+            @RequestParam("date") @org.springframework.format.annotation.DateTimeFormat(
+                    iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate date) {
+        if (!security.isSuperadmin() && !Objects.equals(companyId, security.getCurrentCompanyId())) {
+            throw new AccessDeniedException("El companyId no coincide con el de la sesión.");
+        }
+        var rc = dailySummaryService.createDailySummary(companyId, date);
+        try {
+            processingUseCase.process(rc.getId());
+        } catch (Exception ex) {
+            // El RC ya existe (RESERVED); el operador puede reprocesarlo. No
+            // perdemos la creacion por un fallo de pipeline (cert, red, etc.).
+        }
+        return useCase.getById(rc.getId());
+    }
+
+    /**
+     * Anula un comprobante ACEPTADO: crea la Comunicacion de Baja (RA) que lo
+     * referencia y dispara el envio async a SUNAT. Cuando SUNAT acepta la RA,
+     * el comprobante original pasa a VOIDED automaticamente. Idempotente por
+     * comprobante. Devuelve la RA creada (o la existente).
+     */
+    @RequirePermission("fiscal.fiscal.documents:process")
+    @PostMapping("/{id}/void")
+    public FiscalDocumentResponse voidDocument(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String reason) {
+        assertDocumentTenant(id);
+        var ra = voidDocumentService.createVoid(id, reason);
+        try {
+            processingUseCase.process(ra.getId());
+        } catch (Exception ex) {
+            // La RA ya existe (RESERVED); puede reprocesarse con /{id}/process.
+        }
+        return useCase.getById(ra.getId());
     }
 
     @RequirePermission("fiscal.fiscal.documents:read")
@@ -110,6 +165,31 @@ public class FiscalDocumentController {
     public List<FiscalEventResponse> listEvents(@PathVariable UUID id) {
         assertDocumentTenant(id);
         return useCase.listEvents(id);
+    }
+
+    /**
+     * Descarga del CDR (Constancia de Recepcion de SUNAT) ya almacenado.
+     * Requisito de respaldo legal: el contador necesita el CDR del comprobante
+     * aceptado. El CDR se persiste durante el procesamiento; aqui solo se sirve
+     * el ZIP guardado en {@code document.cdrPath}.
+     */
+    @RequirePermission("fiscal.fiscal.documents:read")
+    @GetMapping("/{id}/cdr")
+    public ResponseEntity<byte[]> downloadCdr(@PathVariable UUID id) {
+        FiscalDocumentResponse d = useCase.getById(id);
+        if (!security.isSuperadmin()
+                && !Objects.equals(d.companyId(), security.getCurrentCompanyId())) {
+            throw new NoSuchElementException("Comprobante no encontrado.");
+        }
+        if (d.cdrPath() == null || d.cdrPath().isBlank()) {
+            throw new NoSuchElementException("Este comprobante aun no tiene CDR disponible.");
+        }
+        byte[] cdr = artifactStorage.readArtifact(d.cdrPath());
+        String filename = "cdr-" + id + ".zip";
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .body(cdr);
     }
 
     /** Multi-tenant guard for document-id-bound operations. */

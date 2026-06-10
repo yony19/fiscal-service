@@ -14,7 +14,9 @@ public class AppConfig {
 
     @Bean
     public RestTemplate restTemplate() {
-        return new RestTemplate();
+        RestTemplate restTemplate = new RestTemplate();
+        restTemplate.getInterceptors().add(new CorrelationIdClientInterceptor());
+        return restTemplate;
     }
 
     @Bean(name = "fiscalProcessingExecutor")
