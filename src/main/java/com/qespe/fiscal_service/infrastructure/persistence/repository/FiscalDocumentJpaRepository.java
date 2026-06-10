@@ -31,6 +31,10 @@ public interface FiscalDocumentJpaRepository extends JpaRepository<FiscalDocumen
     /** Correlativo del RC del dia (RC-YYYYMMDD-NNN). */
     long countByCompanyIdAndDocumentTypeAndIssueDate(UUID companyId, String documentType, LocalDate issueDate);
 
+    /** Companias que emitieron boletas en la fecha (para el RC automatico nocturno). */
+    @org.springframework.data.jpa.repository.Query("select distinct d.companyId from FiscalDocumentEntity d where d.documentTypeCode = '03' and d.issueDate = :date")
+    List<UUID> findCompanyIdsWithBoletasOn(@org.springframework.data.repository.query.Param("date") LocalDate date);
+
     @Override
     @EntityGraph(attributePaths = {"lines"})
     Page<FiscalDocumentEntity> findAll(Specification<FiscalDocumentEntity> spec, Pageable pageable);

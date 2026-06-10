@@ -55,4 +55,9 @@ public class FiscalDocumentRepositoryAdapter implements FiscalDocumentRepository
     public long countByDocumentTypeAndIssueDate(java.util.UUID companyId, String documentType, LocalDate issueDate) {
         return repository.countByCompanyIdAndDocumentTypeAndIssueDate(companyId, documentType, issueDate);
     }
+
+    @Override
+    public List<java.util.UUID> findCompanyIdsWithBoletasOn(LocalDate date) {
+        return repository.findCompanyIdsWithBoletasOn(date);
+    }
 }

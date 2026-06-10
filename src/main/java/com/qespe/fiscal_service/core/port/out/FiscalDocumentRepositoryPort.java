@@ -20,6 +20,9 @@ public interface FiscalDocumentRepositoryPort {
 
     /** Cuantos documentos de un tipo se generaron en la fecha (correlativo RC/RA). */
     long countByDocumentTypeAndIssueDate(UUID companyId, String documentType, LocalDate issueDate);
+
+    /** Companias con boletas emitidas en la fecha (RC automatico). */
+    List<UUID> findCompanyIdsWithBoletasOn(LocalDate date);
     Optional<FiscalDocumentEntity> findByIdempotency(UUID companyId, String sourceService, String idempotencyKey);
     Page<FiscalDocumentEntity> search(Specification<FiscalDocumentEntity> specification, Pageable pageable);
 }
