@@ -107,9 +107,13 @@ public class VoidDocumentService {
         ra.setRelatedDocument(original);
         ra.setRelatedDocumentTypeCode(original.getDocumentTypeCode());
         ra.setRelatedDocumentNumber(original.getFullNumber());
-        // El motivo queda en el log y en el evento de auditoria del pipeline;
-        // la entity no tiene campo de notas y el XML de la RA usa un motivo
-        // fijo (VoidReasonDescription) por ahora.
+        // Motivo de anulacion: se persiste y viaja a SUNAT como
+        // sac:VoidReasonDescription (max 100 chars). Si el operador no lo indica,
+        // el XML cae al generico 'ANULACION'.
+        if (reason != null && !reason.isBlank()) {
+            String r = reason.trim();
+            ra.setVoidReason(r.length() > 100 ? r.substring(0, 100) : r);
+        }
 
         FiscalDocumentEntity saved = repository.save(ra);
         log.info("Comunicacion de Baja creada: {} anula {} ({})",

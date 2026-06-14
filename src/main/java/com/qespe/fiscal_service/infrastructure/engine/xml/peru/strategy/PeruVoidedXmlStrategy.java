@@ -81,7 +81,11 @@ public class PeruVoidedXmlStrategy extends BasePeruUblDocumentXmlStrategy {
         String[] serieNumero = splitSerieNumero(safe(document.getRelatedDocumentNumber(), document.getFullNumber()));
         XmlDomUtils.append(xml, vLine, PeruUblNamespaces.SAC, "sac:DocumentSerialID", serieNumero[0]);
         XmlDomUtils.append(xml, vLine, PeruUblNamespaces.SAC, "sac:DocumentNumberID", serieNumero[1]);
-        XmlDomUtils.append(xml, vLine, PeruUblNamespaces.SAC, "sac:VoidReasonDescription", DEFAULT_VOID_REASON);
+        // Motivo real que ingreso el operador (persistido en void_reason); si no
+        // hay, cae al generico. SUNAT exige este campo en la Comunicacion de Baja.
+        String voidReason = (document.getVoidReason() != null && !document.getVoidReason().isBlank())
+                ? document.getVoidReason() : DEFAULT_VOID_REASON;
+        XmlDomUtils.append(xml, vLine, PeruUblNamespaces.SAC, "sac:VoidReasonDescription", voidReason);
 
         return xml;
     }

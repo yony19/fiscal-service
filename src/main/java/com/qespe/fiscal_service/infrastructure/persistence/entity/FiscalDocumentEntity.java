@@ -136,6 +136,11 @@ public class FiscalDocumentEntity extends AuditableEntity {
     @Column(name = "customer_email", length = 255)
     private String customerEmail;
 
+    /** Motivo de anulacion (solo documentos VOID / Comunicacion de Baja). Lo
+     *  ingresa el operador y se manda a SUNAT como sac:VoidReasonDescription. */
+    @Column(name = "void_reason", length = 250)
+    private String voidReason;
+
     // Montos inicializados a ZERO: son NOT NULL y Hibernate inserta el valor del
     // campo (no el DEFAULT del schema). Un documento que no setea montos —p. ej.
     // la Comunicacion de Baja— no debe insertar NULL y violar la restriccion.
