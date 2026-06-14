@@ -89,8 +89,19 @@ public class VoidDocumentService {
         ra.setFullNumber(fullNumber);
         ra.setIssueDate(today);
         ra.setSourceService("fiscal-service");
+        ra.setSourceId(original.getId().toString());
         ra.setIdempotencyKey(idempotencyKey);
         ra.setStatus(FiscalDocumentStatus.RESERVED);
+        // Campos NOT NULL que la RA hereda del comprobante anulado: mismo emisor
+        // y entorno. (Los montos van en ZERO: una Comunicacion de Baja no lleva
+        // importes.) Sin esto, el insert violaba las restricciones NOT NULL.
+        ra.setEnvironment(original.getEnvironment());
+        ra.setEmitterDocumentType(original.getEmitterDocumentType());
+        ra.setEmitterDocumentNumber(original.getEmitterDocumentNumber());
+        ra.setEmitterLegalName(original.getEmitterLegalName());
+        ra.setEmitterTradeName(original.getEmitterTradeName());
+        ra.setEmitterAddress(original.getEmitterAddress());
+        ra.setCustomerName(original.getCustomerName());
         // Referencia al comprobante anulado — la estrategia XML navega estos
         // campos para armar la VoidedDocumentsLine y el ReferenceDate.
         ra.setRelatedDocument(original);

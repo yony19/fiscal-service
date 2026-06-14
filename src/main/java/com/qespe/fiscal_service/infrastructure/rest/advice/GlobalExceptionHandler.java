@@ -9,6 +9,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -102,16 +103,28 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), req.getRequestURI());
     }
 
+    /**
+     * Violacion de integridad en BD (NOT NULL, longitud, unique, FK). Devuelve
+     * un mensaje limpio al cliente — NUNCA el SQL ni el nombre de la tabla, que
+     * filtraban detalle interno. El detalle completo queda en el log del server.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiError> handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest req) {
+        log.error("Data integrity violation: {}", ex.getMostSpecificCause().getMessage(), ex);
+        return build(HttpStatus.UNPROCESSABLE_ENTITY,
+                "No se pudo completar la operación: los datos no cumplen una restricción.",
+                req.getRequestURI());
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiError> handleGeneric(Exception ex, HttpServletRequest req) {
-        // Real surprise — log full stack trace so the cause is grep-able.
-        // Echo the exception class+message in the response body too: the
-        // previous body just echoed ex.getMessage() (often null), giving the
-        // operator nothing actionable.
+        // Sorpresa real: el detalle completo (clase, mensaje, stack) va SOLO al
+        // log del server. Al cliente le devolvemos un mensaje generico: antes se
+        // filtraba ex.getMessage() (incluido el SQL/nombre de tabla) al usuario.
         log.error("Unhandled exception in controller: {}", ex.getMessage(), ex);
-        String body = "Error interno del servidor: " + ex.getClass().getSimpleName()
-                + (ex.getMessage() != null ? " — " + ex.getMessage() : "");
-        return build(HttpStatus.INTERNAL_SERVER_ERROR, body, req.getRequestURI());
+        return build(HttpStatus.INTERNAL_SERVER_ERROR,
+                "Ocurrió un error interno. Intenta de nuevo; si persiste, contacta soporte.",
+                req.getRequestURI());
     }
 
     private ResponseEntity<ApiError> build(HttpStatus status, String message, String path) {

@@ -136,38 +136,41 @@ public class FiscalDocumentEntity extends AuditableEntity {
     @Column(name = "customer_email", length = 255)
     private String customerEmail;
 
+    // Montos inicializados a ZERO: son NOT NULL y Hibernate inserta el valor del
+    // campo (no el DEFAULT del schema). Un documento que no setea montos —p. ej.
+    // la Comunicacion de Baja— no debe insertar NULL y violar la restriccion.
     @Column(name = "taxable_amount", nullable = false, precision = 18, scale = 2)
-    private BigDecimal taxableAmount;
+    private BigDecimal taxableAmount = BigDecimal.ZERO;
 
     @Column(name = "exempt_amount", nullable = false, precision = 18, scale = 2)
-    private BigDecimal exemptAmount;
+    private BigDecimal exemptAmount = BigDecimal.ZERO;
 
     @Column(name = "unaffected_amount", nullable = false, precision = 18, scale = 2)
-    private BigDecimal unaffectedAmount;
+    private BigDecimal unaffectedAmount = BigDecimal.ZERO;
 
     @Column(name = "free_amount", nullable = false, precision = 18, scale = 2)
-    private BigDecimal freeAmount;
+    private BigDecimal freeAmount = BigDecimal.ZERO;
 
     @Column(name = "discount_total", nullable = false, precision = 18, scale = 2)
-    private BigDecimal discountTotal;
+    private BigDecimal discountTotal = BigDecimal.ZERO;
 
     @Column(name = "charge_total", nullable = false, precision = 18, scale = 2)
-    private BigDecimal chargeTotal;
+    private BigDecimal chargeTotal = BigDecimal.ZERO;
 
     @Column(name = "tax_amount", nullable = false, precision = 18, scale = 2)
-    private BigDecimal taxAmount;
+    private BigDecimal taxAmount = BigDecimal.ZERO;
 
     @Column(name = "igv_amount", nullable = false, precision = 18, scale = 2)
-    private BigDecimal igvAmount;
+    private BigDecimal igvAmount = BigDecimal.ZERO;
 
     @Column(name = "isc_amount", nullable = false, precision = 18, scale = 2)
-    private BigDecimal iscAmount;
+    private BigDecimal iscAmount = BigDecimal.ZERO;
 
     @Column(name = "other_tax_amount", nullable = false, precision = 18, scale = 2)
-    private BigDecimal otherTaxAmount;
+    private BigDecimal otherTaxAmount = BigDecimal.ZERO;
 
     @Column(name = "total_amount", nullable = false, precision = 18, scale = 2)
-    private BigDecimal totalAmount;
+    private BigDecimal totalAmount = BigDecimal.ZERO;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 25)
