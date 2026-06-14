@@ -3,6 +3,8 @@ package com.qespe.fiscal_service.shared.security;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.env.Environment;
+import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Component;
 
 import javax.crypto.Cipher;
@@ -45,9 +47,13 @@ public class PasswordEncryptor {
     private static final int GCM_IV_LENGTH_BYTES = 12;
     private static final int GCM_TAG_LENGTH_BITS = 128;
 
+    /** Clave de DESARROLLO por defecto (application.yaml). Prohibida en prod. */
+    private static final String DEV_DEFAULT_KEY = "dev-only-change-me-in-production-please-32+chars";
+
     @Value("${fiscal.security.cert-password-master-key}")
     private String masterKey;
 
+    private final Environment environment;
     private SecretKey aesKey;
     private final SecureRandom random = new SecureRandom();
 
@@ -57,6 +63,13 @@ public class PasswordEncryptor {
             throw new IllegalStateException(
                     "fiscal.security.cert-password-master-key must be at least 32 chars long. "
                   + "Set FISCAL_CERT_MASTER_KEY env var to a long random string.");
+        }
+        // En produccion NO se permite la clave de desarrollo por defecto: cifraria
+        // las contrasenas de los certificados con una clave publica conocida.
+        if (environment.acceptsProfiles(Profiles.of("prod")) && DEV_DEFAULT_KEY.equals(masterKey)) {
+            throw new IllegalStateException(
+                    "FISCAL_CERT_MASTER_KEY es la clave de desarrollo por defecto y el perfil es 'prod'. "
+                  + "Define FISCAL_CERT_MASTER_KEY con una cadena aleatoria larga y secreta antes de desplegar.");
         }
         try {
             byte[] hashed = MessageDigest.getInstance("SHA-256")
