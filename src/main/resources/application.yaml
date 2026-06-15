@@ -57,7 +57,10 @@ auth-service:
 fiscal:
   artifacts:
     storage-mode: FILE_SYSTEM
-    base-path: ${FISCAL_ARTIFACTS_BASE_PATH:C:/Users/User/Documents/proyecto personal/pointofsale/resources/fiscal}
+    # Default portable (relativo al working dir) para que arranque en cualquier
+    # equipo/contenedor. En produccion definir FISCAL_ARTIFACTS_BASE_PATH a un
+    # volumen persistente (ej. /var/lib/fiscal-artifacts montado como volumen).
+    base-path: ${FISCAL_ARTIFACTS_BASE_PATH:./data/fiscal-artifacts}
   # AES-GCM master key for encrypting .pfx passwords at rest. MUST be set in
   # production via env var; the default is for local dev only and is rotated
   # on every fresh DB. Use any 32+ char random string (32 bytes encoded base64
