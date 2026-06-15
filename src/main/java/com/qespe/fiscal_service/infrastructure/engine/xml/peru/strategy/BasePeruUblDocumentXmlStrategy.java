@@ -77,15 +77,46 @@ public abstract class BasePeruUblDocumentXmlStrategy implements PeruUblDocumentX
         Element taxTotal = XmlDomUtils.append(doc, root, PeruUblNamespaces.CAC, "cac:TaxTotal", null);
         XmlDomUtils.appendAmount(doc, taxTotal, "cbc:TaxAmount", fiscalDocument.getCurrencyCode(), fiscalDocument.getTaxAmount());
 
-        Element taxSub = XmlDomUtils.append(doc, taxTotal, PeruUblNamespaces.CAC, "cac:TaxSubtotal", null);
-        XmlDomUtils.appendAmount(doc, taxSub, "cbc:TaxableAmount", fiscalDocument.getCurrencyCode(), fiscalDocument.getTaxableAmount());
-        XmlDomUtils.appendAmount(doc, taxSub, "cbc:TaxAmount", fiscalDocument.getCurrencyCode(), fiscalDocument.getTaxAmount());
+        // Un cac:TaxSubtotal por tributo presente en las lineas (IGV, EXO, INA,
+        // EXP, GRA...), sumando base e impuesto de cada uno. Antes habia un unico
+        // subtotal IGV con los totales del documento -> incorrecto en ventas mixtas.
+        var byScheme = new java.util.LinkedHashMap<String, BigDecimal[]>();
+        var schemeById = new java.util.HashMap<String, PeruTaxScheme>();
+        for (FiscalDocumentLineEntity line : fiscalDocument.getLines()) {
+            PeruTaxScheme s = PeruTaxScheme.forAffectation(line.getTaxAffectationCode());
+            schemeById.putIfAbsent(s.id, s);
+            BigDecimal[] acc = byScheme.computeIfAbsent(s.id, k -> new BigDecimal[]{BigDecimal.ZERO, BigDecimal.ZERO});
+            acc[0] = acc[0].add(nzAmount(line.getTaxableBaseAmount()));
+            acc[1] = acc[1].add(nzAmount(line.getTaxAmount()));
+        }
 
+        if (byScheme.isEmpty()) {
+            // Flujos sin lineas cargadas: un subtotal con los totales del documento.
+            appendTaxSubtotal(doc, taxTotal, fiscalDocument.getCurrencyCode(),
+                    fiscalDocument.getTaxableAmount(), fiscalDocument.getTaxAmount(), PeruTaxScheme.defaultScheme());
+            return;
+        }
+        for (var entry : byScheme.entrySet()) {
+            BigDecimal[] acc = entry.getValue();
+            appendTaxSubtotal(doc, taxTotal, fiscalDocument.getCurrencyCode(),
+                    acc[0], acc[1], schemeById.get(entry.getKey()));
+        }
+    }
+
+    private void appendTaxSubtotal(Document doc, Element taxTotal, String currency,
+                                   BigDecimal taxableAmount, BigDecimal taxAmount, PeruTaxScheme s) {
+        Element taxSub = XmlDomUtils.append(doc, taxTotal, PeruUblNamespaces.CAC, "cac:TaxSubtotal", null);
+        XmlDomUtils.appendAmount(doc, taxSub, "cbc:TaxableAmount", currency, taxableAmount);
+        XmlDomUtils.appendAmount(doc, taxSub, "cbc:TaxAmount", currency, taxAmount);
         Element taxCategory = XmlDomUtils.append(doc, taxSub, PeruUblNamespaces.CAC, "cac:TaxCategory", null);
         Element taxScheme = XmlDomUtils.append(doc, taxCategory, PeruUblNamespaces.CAC, "cac:TaxScheme", null);
-        XmlDomUtils.append(doc, taxScheme, PeruUblNamespaces.CBC, "cbc:ID", "1000");
-        XmlDomUtils.append(doc, taxScheme, PeruUblNamespaces.CBC, "cbc:Name", "IGV");
-        XmlDomUtils.append(doc, taxScheme, PeruUblNamespaces.CBC, "cbc:TaxTypeCode", "VAT");
+        XmlDomUtils.append(doc, taxScheme, PeruUblNamespaces.CBC, "cbc:ID", s.id);
+        XmlDomUtils.append(doc, taxScheme, PeruUblNamespaces.CBC, "cbc:Name", s.name);
+        XmlDomUtils.append(doc, taxScheme, PeruUblNamespaces.CBC, "cbc:TaxTypeCode", s.typeCode);
+    }
+
+    private static BigDecimal nzAmount(BigDecimal v) {
+        return v != null ? v : BigDecimal.ZERO;
     }
 
     protected void appendMonetaryTotal(Document doc, Element root, FiscalDocumentEntity fiscalDocument, String monetaryTag) {
@@ -132,16 +163,20 @@ public abstract class BasePeruUblDocumentXmlStrategy implements PeruUblDocumentX
 
         Element cat = XmlDomUtils.append(doc, sub, PeruUblNamespaces.CAC, "cac:TaxCategory", null);
         BigDecimal igvRate = resolveLineIgvRate(line);
-        if (igvRate != null) {
-            XmlDomUtils.append(doc, cat, PeruUblNamespaces.CBC, "cbc:Percent", FiscalTaxRateUtils.toPercent(igvRate).toPlainString());
-        }
+        // Porcentaje del tributo: la tasa de la linea si es gravada; 0 para
+        // exonerado/inafecto (SUNAT espera el Percent presente, no omitido).
+        BigDecimal percent = (igvRate != null) ? FiscalTaxRateUtils.toPercent(igvRate) : BigDecimal.ZERO;
+        XmlDomUtils.append(doc, cat, PeruUblNamespaces.CBC, "cbc:Percent", percent.toPlainString());
         if (line.getTaxAffectationCode() != null && !line.getTaxAffectationCode().isBlank()) {
             XmlDomUtils.append(doc, cat, PeruUblNamespaces.CBC, "cbc:TaxExemptionReasonCode", line.getTaxAffectationCode());
         }
+        // Tributo (Catalogo 05) derivado de la afectacion de la linea. Antes fijo
+        // a IGV 1000/IGV/VAT, lo que solo servia para ventas gravadas.
+        PeruTaxScheme schemeInfo = PeruTaxScheme.forAffectation(line.getTaxAffectationCode());
         Element scheme = XmlDomUtils.append(doc, cat, PeruUblNamespaces.CAC, "cac:TaxScheme", null);
-        XmlDomUtils.append(doc, scheme, PeruUblNamespaces.CBC, "cbc:ID", "1000");
-        XmlDomUtils.append(doc, scheme, PeruUblNamespaces.CBC, "cbc:Name", "IGV");
-        XmlDomUtils.append(doc, scheme, PeruUblNamespaces.CBC, "cbc:TaxTypeCode", "VAT");
+        XmlDomUtils.append(doc, scheme, PeruUblNamespaces.CBC, "cbc:ID", schemeInfo.id);
+        XmlDomUtils.append(doc, scheme, PeruUblNamespaces.CBC, "cbc:Name", schemeInfo.name);
+        XmlDomUtils.append(doc, scheme, PeruUblNamespaces.CBC, "cbc:TaxTypeCode", schemeInfo.typeCode);
     }
 
     protected String safe(String value) {
