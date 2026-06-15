@@ -42,4 +42,9 @@ public class CompanyCertificateRepositoryAdapter implements CompanyCertificateRe
     public List<CompanyCertificateEntity> findActiveByCompany(UUID companyId) {
         return repository.findByCompanyIdAndStatus(companyId, "ACTIVE");
     }
+
+    @Override
+    public List<CompanyCertificateEntity> findByStatus(String status) {
+        return repository.findByStatus(status);
+    }
 }

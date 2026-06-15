@@ -26,7 +26,9 @@ public class CompanyCertificateService implements CompanyCertificateUseCase {
     @Transactional
     public CompanyCertificateResponse create(CompanyCertificateRequest request) {
         CompanyCertificateEntity entity = mapper.toEntity(request);
-        return mapper.toResponse(repository.save(entity));
+        CompanyCertificateEntity saved = repository.save(entity);
+        enforceSingleDefault(saved);
+        return mapper.toResponse(saved);
     }
 
     @Override
@@ -35,7 +37,26 @@ public class CompanyCertificateService implements CompanyCertificateUseCase {
         CompanyCertificateEntity entity = repository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Company certificate not found: " + id));
         mapper.updateEntity(request, entity);
-        return mapper.toResponse(repository.save(entity));
+        CompanyCertificateEntity saved = repository.save(entity);
+        enforceSingleDefault(saved);
+        return mapper.toResponse(saved);
+    }
+
+    /**
+     * Un unico certificado por defecto por empresa: si el que se acaba de guardar
+     * quedo como default, desmarca los demas de la misma compania. Antes se podian
+     * tener varios "por defecto", dejando ambiguo cual se usaba al firmar.
+     */
+    private void enforceSingleDefault(CompanyCertificateEntity saved) {
+        if (!Boolean.TRUE.equals(saved.getIsDefault())) {
+            return;
+        }
+        for (CompanyCertificateEntity other : repository.findByCompanyId(saved.getCompanyId())) {
+            if (!other.getId().equals(saved.getId()) && Boolean.TRUE.equals(other.getIsDefault())) {
+                other.setIsDefault(false);
+                repository.save(other);
+            }
+        }
     }
 
     @Override

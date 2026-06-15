@@ -14,4 +14,6 @@ public interface CompanyCertificateRepositoryPort {
     List<CompanyCertificateEntity> findByCompanyId(UUID companyId);
     Page<CompanyCertificateEntity> findByCompanyId(UUID companyId, Pageable pageable);
     List<CompanyCertificateEntity> findActiveByCompany(UUID companyId);
+    /** Todos los certificados en un estado dado (job de vencimiento). */
+    List<CompanyCertificateEntity> findByStatus(String status);
 }

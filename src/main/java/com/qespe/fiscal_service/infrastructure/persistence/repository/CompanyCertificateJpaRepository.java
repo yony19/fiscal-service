@@ -12,4 +12,6 @@ public interface CompanyCertificateJpaRepository extends JpaRepository<CompanyCe
     List<CompanyCertificateEntity> findByCompanyId(UUID companyId);
     Page<CompanyCertificateEntity> findByCompanyId(UUID companyId, Pageable pageable);
     List<CompanyCertificateEntity> findByCompanyIdAndStatus(UUID companyId, String status);
+    /** Todos los certificados en un estado (para el job de vencimiento). */
+    List<CompanyCertificateEntity> findByStatus(String status);
 }
