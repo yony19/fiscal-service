@@ -14,6 +14,13 @@ public final class PeruUblNamespaces {
     public static final String UBL_VOIDED = "urn:sunat:names:specification:ubl:peru:schema:xsd:VoidedDocuments-1";
     public static final String UBL_SUMMARY = "urn:sunat:names:specification:ubl:peru:schema:xsd:SummaryDocuments-1";
 
+    // Comprobantes de Retencion (cat. 20) y Percepcion (cat. 40). A diferencia de
+    // RA/RC (resumenes async via sendSummary), estos son comprobantes SINCRONOS
+    // (sendBill -> CDR), pero igual usan una raiz UBL propia de SUNAT en lugar de
+    // Invoice/CreditNote. Comparten sac/ds como RA/RC.
+    public static final String UBL_RETENTION = "urn:sunat:names:specification:ubl:peru:schema:xsd:Retention-1";
+    public static final String UBL_PERCEPTION = "urn:sunat:names:specification:ubl:peru:schema:xsd:Perception-1";
+
     public static final String EXT = "urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2";
     public static final String CAC = "urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2";
     public static final String CBC = "urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2";

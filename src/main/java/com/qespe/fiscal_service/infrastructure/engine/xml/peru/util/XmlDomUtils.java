@@ -56,6 +56,25 @@ public final class XmlDomUtils {
         return root;
     }
 
+    /**
+     * Raiz para los comprobantes SUNAT de Retencion / Percepcion (cat. 20 / 40).
+     * Como la {@link #createSummaryRoot}, declaran {@code ds} (firma) y {@code sac}
+     * (componentes agregados SUNAT: {@code sac:SUNATRetentionDocumentReference},
+     * {@code sac:SUNATPerceptionDocumentReference}, {@code sac:SUNATRetentionInformation},
+     * etc.). Se envian sincronos (sendBill), pero la raiz NO es Invoice/CreditNote.
+     */
+    public static Element createSunatComprobanteRoot(Document doc, String namespace, String localName) {
+        Element root = doc.createElementNS(namespace, localName);
+        root.setAttribute("xmlns", namespace);
+        root.setAttribute("xmlns:cac", PeruUblNamespaces.CAC);
+        root.setAttribute("xmlns:cbc", PeruUblNamespaces.CBC);
+        root.setAttribute("xmlns:ext", PeruUblNamespaces.EXT);
+        root.setAttribute("xmlns:ds", PeruUblNamespaces.DS);
+        root.setAttribute("xmlns:sac", PeruUblNamespaces.SAC);
+        doc.appendChild(root);
+        return root;
+    }
+
     public static Element append(Document doc, Element parent, String namespace, String qName, String value) {
         Element child = doc.createElementNS(namespace, qName);
         if (value != null) {
