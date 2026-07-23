@@ -59,7 +59,15 @@ public class CertificateMaterialLoader {
         } else {
             password = secretValueResolver.resolve(context.passwordSecretRef());
         }
-        return parsePkcs12(p12bytes, password == null ? new char[0] : password.toCharArray(), context.alias());
+        // NO se usa context.alias() como alias de keystore a propósito: ese campo
+        // es el nombre "amigable" que el usuario tipea en el formulario (ej. "Cert
+        // SUNAT DEMO 2026") — no tiene por qué coincidir con el friendlyName real
+        // que quedó dentro del .pfx al exportarlo (casi nunca coincide en la
+        // práctica). Pasar null deja que resolveAlias() use su propio fallback:
+        // toma la primera entrada de clave privada del keystore, que es correcto
+        // para el caso normal de un .pfx con un solo certificado (hallazgo
+        // 2026-07-23: "Configured certificate alias was not found in keystore").
+        return parsePkcs12(p12bytes, password == null ? new char[0] : password.toCharArray(), null);
     }
 
     private byte[] readFromFilePath(String certificatePath) {
