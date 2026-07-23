@@ -23,6 +23,16 @@ public class CompanyCertificateEntity extends AuditableEntity {
     @Column(name = "provider_code", nullable = false, length = 40)
     private String providerCode;
 
+    /**
+     * FK real al Proveedor específico (fiscal_provider_config) al que
+     * pertenece este certificado — resuelve la ambigüedad TEST/PROD que
+     * {@link #providerCode} (texto) no puede distinguir por sí solo. Null
+     * = certificado sin vincular (no elegible para firmar, ver
+     * CertificateResolutionService). Ver openspec/changes/certificate-provider-binding.
+     */
+    @Column(name = "provider_id")
+    private UUID providerId;
+
     @Column(name = "alias", nullable = false, length = 80)
     private String alias;
 

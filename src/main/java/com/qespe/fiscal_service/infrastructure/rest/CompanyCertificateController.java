@@ -4,6 +4,7 @@ import com.qespe.fiscal_service.core.dto.certificate.CompanyCertificateRequest;
 import com.qespe.fiscal_service.core.dto.certificate.CompanyCertificateResponse;
 import com.qespe.fiscal_service.core.port.in.CertificateUploadUseCase;
 import com.qespe.fiscal_service.core.port.in.CompanyCertificateUseCase;
+import com.qespe.fiscal_service.core.port.in.GenerateTestCertificateUseCase;
 import com.qespe.fiscal_service.core.security.annotation.RequirePermission;
 import com.qespe.fiscal_service.infrastructure.security.util.SecurityUtils;
 import com.qespe.fiscal_service.shared.exception.BadRequestException;
@@ -27,6 +28,7 @@ public class CompanyCertificateController {
 
     private final CompanyCertificateUseCase useCase;
     private final CertificateUploadUseCase uploadUseCase;
+    private final GenerateTestCertificateUseCase generateTestUseCase;
     private final SecurityUtils security;
 
     @RequirePermission("fiscal.fiscal.certificates:read")
@@ -114,6 +116,24 @@ public class CompanyCertificateController {
         return uploadUseCase.uploadPfx(id, bytes, password, filename);
     }
 
+    /**
+     * Genera, enteramente en el servidor, un certificado autofirmado listo
+     * para usar en el entorno TEST de SUNAT — sin que el usuario necesite
+     * herramientas externas ni OpenSSL. El servicio rechaza la operación
+     * (400) si el Proveedor vinculado al certificado no está en TEST,
+     * independiente de que el botón esté oculto en la UI para Proveedores
+     * PROD (ver openspec/changes/certificate-test-generation).
+     */
+    @RequirePermission("fiscal.fiscal.certificates:update")
+    @PostMapping("/{id}/generate-test")
+    public CompanyCertificateResponse generateTest(@PathVariable UUID id) {
+        CompanyCertificateResponse existing = useCase.getById(id);
+        if (!security.isSuperadmin() && !Objects.equals(existing.companyId(), security.getCurrentCompanyId())) {
+            throw new java.util.NoSuchElementException("Certificado no encontrado.");
+        }
+        return generateTestUseCase.generateTest(id);
+    }
+
     private UUID enforceCompany(UUID requested) {
         return security.isSuperadmin() ? requested : security.getCurrentCompanyId();
     }
@@ -152,7 +172,7 @@ public class CompanyCertificateController {
 
     private static CompanyCertificateRequest withCompany(CompanyCertificateRequest r, UUID companyId) {
         return new CompanyCertificateRequest(
-                companyId, r.providerCode(), r.alias(), r.storageMode(),
+                companyId, r.providerCode(), r.providerId(), r.alias(), r.storageMode(),
                 r.certificatePath(), r.privateKeyPath(), r.secretRef(), r.passwordSecretRef(),
                 r.fingerprintSha256(), r.validFrom(), r.validTo(), r.status(), r.isDefault()
         );

@@ -61,13 +61,25 @@ public abstract class BasePeruUblDocumentXmlStrategy implements PeruUblDocumentX
         Element customer = XmlDomUtils.append(doc, root, PeruUblNamespaces.CAC, "cac:AccountingCustomerParty", null);
         Element party = XmlDomUtils.append(doc, customer, PeruUblNamespaces.CAC, "cac:Party", null);
 
-        if (fiscalDocument.getCustomerDocumentNumber() != null && !fiscalDocument.getCustomerDocumentNumber().isBlank()) {
-            Element identification = XmlDomUtils.append(doc, party, PeruUblNamespaces.CAC, "cac:PartyIdentification", null);
-            Element id = XmlDomUtils.append(doc, identification, PeruUblNamespaces.CBC, "cbc:ID", fiscalDocument.getCustomerDocumentNumber());
-            if (fiscalDocument.getCustomerDocumentType() != null && !fiscalDocument.getCustomerDocumentType().isBlank()) {
-                id.setAttribute("schemeID", fiscalDocument.getCustomerDocumentType());
-            }
-        }
+        // SUNAT exige el bloque PartyIdentification SIEMPRE presente — antes se
+        // omitía por completo cuando no había documento (venta a "Público
+        // General"), y el envío se rechazaba con "El XML no contiene el tag...
+        // numero de documento de identidad del receptor" para CUALQUIER monto,
+        // no solo ventas >= S/700 (que es cuando el negocio exige identificar
+        // de verdad al cliente; hallazgo 2026-07-23, reproducido con boletas de
+        // S/8 y S/350 en TEST). Convención usada en la comunidad de
+        // facturación electrónica Perú para "cliente sin identificar": DNI
+        // (tipo 1) + "00000000". OJO: no se pudo verificar contra la guía
+        // oficial de SUNAT en esta sesión — probar con una venta real contra
+        // SUNAT Beta antes de confiar en esto para producción.
+        String docNumber = fiscalDocument.getCustomerDocumentNumber();
+        boolean hasDoc = docNumber != null && !docNumber.isBlank();
+        String docType = fiscalDocument.getCustomerDocumentType();
+
+        Element identification = XmlDomUtils.append(doc, party, PeruUblNamespaces.CAC, "cac:PartyIdentification", null);
+        Element id = XmlDomUtils.append(doc, identification, PeruUblNamespaces.CBC, "cbc:ID",
+                hasDoc ? docNumber : "00000000");
+        id.setAttribute("schemeID", hasDoc && docType != null && !docType.isBlank() ? docType : "1");
 
         Element legalEntity = XmlDomUtils.append(doc, party, PeruUblNamespaces.CAC, "cac:PartyLegalEntity", null);
         XmlDomUtils.append(doc, legalEntity, PeruUblNamespaces.CBC, "cbc:RegistrationName", safe(fiscalDocument.getCustomerName()));

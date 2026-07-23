@@ -87,12 +87,20 @@ public class EmitterReadinessService implements EmitterReadinessUseCase {
                 && activeProviders.get(0).getPriority().equals(activeProviders.get(1).getPriority());
 
         // ── Certificate lookup ────────────────────────────────────────
+        // Filtra por provider_id exacto (FK real), no por coincidencia de
+        // texto de provider_code -- eso permitia que un certificado de un
+        // Proveedor TEST calificara para un Emisor PROD (o viceversa) cuando
+        // ambos compartian el mismo codigo. Un certificado sin provider_id
+        // vinculado (ver migracion V14) nunca es candidato, aunque su
+        // provider_code textual coincida. Ver openspec/changes/certificate-provider-binding.
         Instant now = Instant.now();
-        List<CompanyCertificateEntity> certCandidates = certRepo.findActiveByCompany(emitter.getCompanyId()).stream()
+        List<CompanyCertificateEntity> allActiveCerts = certRepo.findActiveByCompany(emitter.getCompanyId()).stream()
                 .filter(c -> c.getValidTo() != null && c.getValidTo().isAfter(now))
-                .filter(c -> effectiveProvider == null
-                        || (c.getProviderCode() != null
-                            && c.getProviderCode().equalsIgnoreCase(effectiveProvider.getProviderCode())))
+                .toList();
+        List<CompanyCertificateEntity> certCandidates = allActiveCerts.stream()
+                .filter(c -> effectiveProvider != null
+                        && c.getProviderId() != null
+                        && c.getProviderId().equals(effectiveProvider.getId()))
                 .toList();
         certCandidates = new ArrayList<>(certCandidates);
         // Default cert wins; otherwise the longest-valid one.
@@ -112,7 +120,18 @@ public class EmitterReadinessService implements EmitterReadinessUseCase {
         List<String> warnings = new ArrayList<>();
         if (!emitterActive) missing.add("El emisor no está activo.");
         if (effectiveProvider == null) missing.add("No hay un proveedor de envío activo para este emisor.");
-        if (effectiveCert == null) missing.add("No hay un certificado vigente asignado al proveedor.");
+        if (effectiveCert == null) {
+            // Distingue "no hay ningun certificado vigente" de "hay uno vigente
+            // pero sin vincular a este Proveedor" -- el usuario necesita saber
+            // si debe subir un certificado nuevo o solo re-vincular uno existente.
+            boolean hasUnlinkedCertMatchingCode = effectiveProvider != null && allActiveCerts.stream()
+                    .anyMatch(c -> c.getProviderId() == null
+                            && c.getProviderCode() != null
+                            && c.getProviderCode().equalsIgnoreCase(effectiveProvider.getProviderCode()));
+            missing.add(hasUnlinkedCertMatchingCode
+                    ? "Hay un certificado vigente pero sin proveedor vinculado. Vincúlalo desde Certificados."
+                    : "No hay un certificado vigente asignado al proveedor.");
+        }
 
         Long daysUntilExpiry = null;
         if (effectiveCert != null && effectiveCert.getValidTo() != null) {

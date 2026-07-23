@@ -77,7 +77,7 @@ public class FiscalDocumentProcessingService implements FiscalDocumentProcessing
 
             SignedArtifactResult signedArtifact = checkpoint.signedArtifact();
             if (signedArtifact == null) {
-                CertificateContext certificateContext = certificateResolver.resolve(document, providerContext.providerCode());
+                CertificateContext certificateContext = certificateResolver.resolve(document, providerContext.providerConfigId());
                 Map<String, Object> certPayload = new java.util.HashMap<>();
                 certPayload.put("certificateId", certificateContext.certificateId());
                 certPayload.put("providerCode", certificateContext.providerCode());

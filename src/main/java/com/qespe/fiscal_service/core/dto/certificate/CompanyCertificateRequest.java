@@ -15,6 +15,12 @@ import java.util.UUID;
 public record CompanyCertificateRequest(
         @NotNull UUID companyId,
         @NotBlank String providerCode,
+        // Opcional: un certificado puede crearse sin vincular todavia (igual
+        // que hoy se permite crear metadata-only sin subir el .pfx) -- el
+        // readiness del Emisor lo marca "Incompleto" hasta que se vincule.
+        // Si se manda, DEBE referenciar un fiscal_provider_config de la misma
+        // companyId (ver validacion en CompanyCertificateService).
+        UUID providerId,
         @NotBlank String alias,
         // Optional: filled automatically as INLINE_ENCRYPTED on .pfx upload.
         // Only set explicitly when an admin uses the legacy paths/secret flow.

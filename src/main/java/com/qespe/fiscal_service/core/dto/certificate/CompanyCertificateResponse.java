@@ -17,6 +17,10 @@ public record CompanyCertificateResponse(
         UUID id,
         UUID companyId,
         String providerCode,
+        // Null = certificado sin vincular a un Proveedor especifico todavia.
+        UUID providerId,
+        /** Entorno (TEST/PROD) del Proveedor vinculado; null si providerId es null. */
+        String providerEnvironment,
         String alias,
         // ── User-facing ────────────────────────────────────────────
         /** Original filename of the uploaded .pfx, e.g. "cert-2024.pfx". */

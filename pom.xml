@@ -112,6 +112,14 @@
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-database-postgresql</artifactId>
 		</dependency>
+		<!-- Generacion de certificados X.509 autofirmados para pruebas (solo TEST,
+		     ver openspec/changes/certificate-test-generation). El JDK no expone
+		     una API publica y estable para armar un certificado nuevo desde cero. -->
+		<dependency>
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcpkix-jdk18on</artifactId>
+			<version>1.78.1</version>
+		</dependency>
 	</dependencies>
 
 	<build>
